@@ -36,7 +36,8 @@ mv mage2-installer.sh ~/bin/mage2-installer
 ```
 
 ## Screenshots
-
+![Mage2Backup Help](https://github.com/MagePsycho/magento2-installer-bash-script/raw/master/docs/magento2-installer-bash-script-help.png "Magento2 Installer Help")
+Screentshot - Magento2 Installer Help
 
 ## RoadMap
  - Support multiple compression types (`.gz`, `.zip`, `.tar.bz2`)
