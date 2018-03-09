@@ -177,7 +177,7 @@ Version $VERSION
         --edition                   Magento2 edition (Default: community)
         --version                   Magento2 version
                                     Refer - https://github.com/magento/magento2/releases
-        --install-dir               Magento2 installation directory
+        --install-dir               Magento2 installation directory (Default: Current)
         --base-url                  Base URL
         --install-sample-data       Install sample data (Default: 0)
         --setup-mode                Setup Mode (Default: developer)
@@ -201,7 +201,7 @@ Version $VERSION
         -h,     --help              Display this help and exit
 
     Examples:
-        $(basename "$0") --version=... --install-dir=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=...
+        $(basename "$0") --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=...
 
 "
     _printPoweredBy
