@@ -449,6 +449,9 @@ function installFromTar()
 
     # Finally move all the files from sub-folder to the www dir
     mv "magento2-$M2_VERSION"/{.[!.],}* ./ || _die "Couldn't move files to : ${INSTALL_DIR}."
+    if [[ ! -f ./nginx.conf ]]; then
+        cp ./nginx.conf.sample ./nginx.conf
+    fi
     verifyCurrentDirIsMage2Root
 
     # if db already exists, throws SQL error
