@@ -35,6 +35,13 @@ mv mage2-installer.sh ~/bin/mage2-installer
 ./mage2-installer.sh --version=2.2.3 --base-url=magento223ce.local --db-user=root --db-pass=pass --db-name=magento223ce
 ```
 
+## BONUS
+After installation, you can create virtual host with this FREE bash script - 
+https://github.com/MagePsycho/nginx-virtual-host-bash-script
+```
+sudo ./vhost-nginx.sh --domain=magento223ce.local --app=magento2 --root-dir=/var/www/magento2/magento223ce
+```
+
 ## Screenshots
 ![Mage2Backup Help](https://github.com/MagePsycho/magento2-installer-bash-script/raw/master/docs/magento2-installer-bash-script-help.png "Magento2 Installer Help")
 Screentshot - Magento2 Installer Help
