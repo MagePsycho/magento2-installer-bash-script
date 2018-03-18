@@ -549,7 +549,7 @@ function setFilesystemPermission()
 
 function verifyCurrentDirIsMage2Root()
 {
-    if [[ -f './bin/magento' ]] && [[ -f './app/etc/di.xml' ]]; then
+    if [[ ! -f './bin/magento' ]] && [[ ! -f './app/etc/di.xml' ]]; then
         _die "Current directory is not Magento2 root."
     fi
 }
