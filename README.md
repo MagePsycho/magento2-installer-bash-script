@@ -47,8 +47,8 @@ sudo ./vhost-nginx.sh --domain=magento223ce.local --app=magento2 --root-dir=/var
 Screentshot - Magento2 Installer Help
 
 ## RoadMap
- - Support multiple compression types (`.gz`, `.zip`, `.tar.bz2`)
- - Option to install Magento 2 Enterprise Edition
- - Option to install via composer & git clone
- - Option to check system readiness (PHP & it's extensions, MySQL, Nginx/Apache)
- - Option to create virtual host (nginx)
+ - [ ] Support multiple compression types (`.gz`, `.zip`, `.tar.bz2`)
+ - [ ] Option to install Magento 2 Enterprise Edition
+ - [ ] Option to install via composer & git clone
+ - [ ] Option to check system readiness (PHP & it's extensions, MySQL, Nginx/Apache)
+ - [ ] Option to create virtual host (nginx)
