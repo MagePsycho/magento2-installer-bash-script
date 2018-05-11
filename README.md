@@ -6,7 +6,7 @@ This bash script helps you to install Magento2 from different sources with sampl
 ## INSTALL
 You can simply download the script file and give the executable permission.
 ```
-curl -O mage2-installer.sh https://raw.githubusercontent.com/MagePsycho/magento2-installer-bash-script/master/src/magento2-installer.sh
+curl -0 mage2-installer.sh https://raw.githubusercontent.com/MagePsycho/magento2-installer-bash-script/master/src/magento2-installer.sh
 chmod +x mage2-installer.sh
 ```
 
