@@ -398,7 +398,7 @@ function prepareSecureBaseUrl()
 
 function getDomainFromUrl()
 {
-    echo "$BASE_URL" | awk -F'[:\\/]' '{print $4}'
+    echo "$BASE_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||'
 }
 
 function prepareM2GitTarUrl()
