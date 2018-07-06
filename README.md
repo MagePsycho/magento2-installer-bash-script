@@ -51,4 +51,6 @@ Screentshot - Magento2 Installer Help
  - [ ] Option to install Magento 2 Enterprise Edition
  - [ ] Option to install via composer & git clone
  - [ ] Option to check system readiness (PHP & it's extensions, MySQL, Nginx/Apache)
- - [ ] Option to create virtual host (nginx)
+ - [X] Option to create virtual host (nginx)
+ - [ ] Option to create crontab settings
+ - [ ] Option to migrate with local codebase + database
