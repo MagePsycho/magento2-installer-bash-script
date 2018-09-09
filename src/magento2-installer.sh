@@ -543,7 +543,7 @@ function setFilesystemPermission()
 
     # @todo handle for multiple OS
     if ! _isOs 'darwin'; then
-        chown -R www-data:www-data ./ || _die "Couldn't change ownership of files."
+        sudo chown -R www-data:www-data ./ || _die "Couldn't change ownership of files."
     fi
 }
 
