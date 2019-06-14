@@ -201,7 +201,7 @@ Version $VERSION
         -h,     --help              Display this help and exit
 
     Examples:
-        $(basename "$0") --source=... --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=...
+        $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=...
 
 "
     _printPoweredBy
