@@ -26,13 +26,17 @@ mv mage2-installer.sh ~/bin/mage2-installer
 ./mage2-installer.sh --help
 ```
 
+- `--source` options
+    - `tar` (Default)
+    - `composer`
+
 ### To install Magento CE 2.3.1 (with sample data)
 ```
 ./mage2-installer.sh --version=2.3.1 --base-url=magento231ce.test --install-sample-data --db-user=root --db-pass=pass --db-name=magento231ce
 ```
 
-`--source` option is optional which defaults value to `tar` .
-If you want to install via composer, you can use `--source=composer` option
+If `--source` option is not passed, default `tar` source is used for downloading.    
+If you want to install via composer, you can simply use `--source=composer` option:
 ```
 ./mage2-installer.sh --source=composer --version=2.3.1 --base-url=magento231ce.test --install-sample-data --db-user=root --db-pass=pass --db-name=magento231ce
 ```
