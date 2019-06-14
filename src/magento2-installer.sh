@@ -5,7 +5,7 @@
 #
 # @author   Raj KB <magepsycho@gmail.com>
 # @website  http://www.magepsycho.com
-# @version  0.1.0
+# @version  0.1.1
 
 # UnComment it if bash is lower than 4.x version
 shopt -s extglob
@@ -154,8 +154,8 @@ ${_green}
 Powered By:
 $mp_ascii
 
- >> Store: ${_reset}${_underline}${_blue}http://www.magepsycho.com${_reset}${_reset}${_green}
- >> Blog:  ${_reset}${_underline}${_blue}http://www.blog.magepsycho.com${_reset}${_reset}${_green}
+ >> Store: ${_reset}${_underline}${_blue}https://www.magepsycho.com${_reset}${_reset}${_green}
+ >> Blog:  ${_reset}${_underline}${_blue}https://blog.magepsycho.com${_reset}${_reset}${_green}
 
 ################################################################
 ${_reset}
@@ -173,7 +173,7 @@ Simplified Magento2 Installer
 Version $VERSION
 
     Options:
-        --source                    Installation source (Default: tar)
+        --source                    Installation source (Options: tar, composer, Default: tar)
         --edition                   Magento2 edition (Default: community)
         --version                   Magento2 version
                                     Refer - https://github.com/magento/magento2/releases
@@ -201,7 +201,7 @@ Version $VERSION
         -h,     --help              Display this help and exit
 
     Examples:
-        $(basename "$0") --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=...
+        $(basename "$0") --source=... --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=...
 
 "
     _printPoweredBy
@@ -309,7 +309,11 @@ function validateArgs()
         ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
 
-    if [[ ! -z "$M2_VERSION" ]]; then
+    if [[ "$INSTALL_SOURCE" != @(tar|composer) ]]; then
+        _error "Install source must be one of tar|composer."
+    fi
+
+    if [[ ! -z "$M2_VERSION" ]] && [[ "$INSTALL_SOURCE" == 'tar' ]]; then
         prepareM2GitTarUrl
         if ! `validateUrl $SOURCE_PATH`; then
             _error "Magento2 tar with version '${M2_VERSION}' doesn't exist."
@@ -414,15 +418,40 @@ function prepareInstallDir()
 
 function genAdminFrontname()
 {
-    echo $(cat /dev/urandom | env LC_CTYPE=C tr -dc 'a-z0-9' | fold -w 6 | head -n 1)
+    echo $(cat /dev/urandom | env LC_ALL=C tr -dc 'a-z0-9' | fold -w 6 | head -n 1)
 }
 
 function genRandomPassword()
 {
-    echo $(cat /dev/urandom | env LC_CTYPE=C tr -dc '_a-zAZ_0-9&$@%' | fold -w 8 | head -n 1)
+    echo $(cat /dev/urandom | env LC_ALL=C tr -dc '_a-zAZ_0-9&$@%' | fold -w 8 | head -n 1)
 }
 
-function installFromTar()
+function composerInstall()
+{
+    mkdir -p "$INSTALL_DIR"
+    cd "$INSTALL_DIR" || _die "Couldn't change directory to : ${INSTALL_DIR}."
+
+    composer create-project --repository=https://repo.magento.com/ magento/project-community-edition:"${M2_VERSION}" .
+    #composer create-project --repository=https://repo.magento.com/ magento/project-enterprise-edition:"${M2_VERSION}" .
+
+    if [[ ! -f ./nginx.conf ]]; then
+        cp ./nginx.conf.sample ./nginx.conf
+    fi
+    verifyCurrentDirIsMage2Root
+
+    # if db already exists, throws SQL error
+    createDb
+    setFilesystemPermission
+    installMagento
+
+    if [[ "$INSTALL_SAMPLE_DATA" -eq 1 ]]; then
+        installSampleData
+    fi
+
+    afterInstall
+}
+
+function tarInstall()
 {
     # Check Magento dependencies
     # @todo
@@ -455,10 +484,8 @@ function installFromTar()
     verifyCurrentDirIsMage2Root
 
     # if db already exists, throws SQL error
-    _arrow "Creating database ${DB_NAME}..."
-    mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "CREATE DATABASE $DB_NAME" || _die "Couldn't create database: ${DB_NAME}."
+    createDb
 
-    _arrow "Setting ownership & permissions..."
     setFilesystemPermission
 
     rm -rf "magento2-${M2_VERSION}"/
@@ -466,6 +493,29 @@ function installFromTar()
     _arrow "Running Composer..."
     composer install || _die "'composer install' command failed."
 
+    installMagento
+
+    if [[ "$INSTALL_SAMPLE_DATA" -eq 1 ]]; then
+        installSampleData
+    fi
+
+    afterInstall
+}
+
+function createDb()
+{
+    _arrow "Creating database ${DB_NAME}..."
+    mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME}" || _die "Couldn't create database: ${DB_NAME}."
+}
+
+function dropDb()
+{
+    _arrow "Dropping database ${DB_NAME}..."
+    mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "DROP DATABASE IF EXISTS $DB_NAME" || _die "Couldn't drop database: ${DB_NAME}."
+}
+
+function installMagento()
+{
     _arrow "Installing Magento2..."
     prepareBaseUrl
     prepareSecureBaseUrl
@@ -493,27 +543,31 @@ function installFromTar()
     #--use-secure=1
     #--base-url-secure=$BASE_URL_SECURE
     #--use-secure-admin=1
+}
 
-    if [[ "$INSTALL_SAMPLE_DATA" -eq 1 ]]; then
-        _arrow "Installing sample data..."
+function installSampleData()
+{
+    _arrow "Installing sample data..."
 
-        # "${HOME}/.config/composer/auth.json"
-        if [[ -f "${HOME}/.composer/auth.json" ]]; then
-            if [[ -d ./var/composer_home ]]; then
-                cp "${HOME}/.composer/auth.json" ./var/composer_home/
-            fi
+    # "${HOME}/.config/composer/auth.json"
+    if [[ -f "${HOME}/.composer/auth.json" ]]; then
+        if [[ -d ./var/composer_home ]]; then
+            cp "${HOME}/.composer/auth.json" ./var/composer_home/
         fi
-
-        composer config repositories.magento composer https://repo.magento.com
-
-        php -d memory_limit=-1 ./bin/magento sampledata:deploy
-
-        # Run in case of Authentication error
-        ###composer update
-
-        php -d memory_limit=-1 ./bin/magento setup:upgrade
     fi
 
+    composer config repositories.magento composer https://repo.magento.com
+
+    php -d memory_limit=-1 ./bin/magento sampledata:deploy
+
+    # Run in case of Authentication error
+    ###composer update
+
+    php -d memory_limit=-1 ./bin/magento setup:upgrade
+}
+
+function afterInstall()
+{
     if [[ "$M2_SETUP_MODE" = 'developer' ]]; then
         _arrow "Setting developer mode..."
         php ./bin/magento deploy:mode:set developer
@@ -523,10 +577,12 @@ function installFromTar()
         _arrow "Setting production mode..."
         php ./bin/magento deploy:mode:set production
     fi
+    setFilesystemPermission
 }
 
 function setFilesystemPermission()
 {
+    _arrow "Setting ownership & permissions..."
     verifyCurrentDirIsMage2Root
 
     chmod u+x ./bin/magento || _die "Unable to add executable permission on ./bin/magento."
@@ -619,7 +675,7 @@ export LANG=C
 
 DEBUG=0
 _debug set -x
-VERSION="0.1.0"
+VERSION="0.1.1"
 
 # Defaults
 CURRENT_DIR=$(basename "$(pwd)")
@@ -666,7 +722,11 @@ function main()
     #checkMage2Dependencies
 
     if [[ "$INSTALL_SOURCE" = 'tar' ]]; then
-        installFromTar
+        tarInstall
+    fi
+
+    if [[ "$INSTALL_SOURCE" = 'composer' ]]; then
+        composerInstall
     fi
 
     printSuccessMessage
