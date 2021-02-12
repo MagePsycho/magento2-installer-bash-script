@@ -5,7 +5,7 @@
 #
 # @author   Raj KB <magepsycho@gmail.com>
 # @website  http://www.magepsycho.com
-# @version  0.1.1
+# @version  0.1.2
 
 # UnComment it if bash is lower than 4.x version
 shopt -s extglob
@@ -690,7 +690,7 @@ export LANG=C
 
 DEBUG=0
 _debug set -x
-VERSION="0.1.1"
+VERSION="0.1.2"
 
 # Defaults
 CURRENT_DIR=$(basename "$(pwd)")
