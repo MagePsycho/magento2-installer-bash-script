@@ -198,6 +198,8 @@ Version $VERSION
         --currency                  Currency (Default: USD)
         --timezone                  Timezone (Default: America/Chicago)
 
+        --force                     Forcefully drops the DB if exists & cleans up the installation directory
+
         -h,     --help              Display this help and exit
 
     Examples:
@@ -283,6 +285,9 @@ function processArgs()
             --timezone=*)
                 TIMEZONE="${arg#*=}"
             ;;
+            --force)
+                FORCE=1
+            ;;
             --debug)
                 DEBUG=1
                 set -o xtrace
@@ -348,10 +353,13 @@ function validateArgs()
 
     if [[ ! -z "$DB_PASS" ]] && [[ ! -z "$DB_NAME" ]]; then
         mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e exit
-        if [[ $? -eq 0 ]]; then
-            if mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "USE $DB_NAME"; then
-                _error "Database '$DB_NAME' already exists."
-                ERROR_COUNT=$((ERROR_COUNT + 1))
+        if [[ $? -eq 0  ]]; then
+            if [[ "$FORCE" -eq 0 ]]; then
+                if mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "USE $DB_NAME"; then
+                    _error "Database '$DB_NAME' already exists."
+                    _arrow "Use --force to drop the database."
+                    ERROR_COUNT=$((ERROR_COUNT + 1))
+                fi
             fi
         else
             _error "Unable to connect the database. Please re-check the --db-* parameters."
@@ -476,8 +484,15 @@ function tarInstall()
 
     cd "$INSTALL_DIR" || _die "Couldn't change directory to : ${INSTALL_DIR}."
 
+    # Clean up installation directory
+    if [[ "$FORCE" -eq 1 ]] && [[ -f './bin/magento' ]] && [[ -f './app/etc/di.xml' ]]; then
+        rm -rf ./*
+        rm -rf ./.*
+    fi
+
     # Finally move all the files from sub-folder to the www dir
     mv "magento2-$M2_VERSION"/{.[!.],}* ./ || _die "Couldn't move files to : ${INSTALL_DIR}."
+
     if [[ ! -f ./nginx.conf ]]; then
         cp ./nginx.conf.sample ./nginx.conf
     fi
@@ -520,7 +535,7 @@ function installMagento()
     prepareBaseUrl
     prepareSecureBaseUrl
 
-    php ./bin/magento setup:install \
+    php -d memory_limit=-1 ./bin/magento setup:install \
         --base-url="$BASE_URL" \
         --db-host="$DB_HOST" \
         --db-name="$DB_NAME" \
@@ -706,6 +721,8 @@ ADMIN_LASTNAME='Doe'
 ADMIN_EMAIL='admin@example.com'
 ADMIN_USER='admin'
 ADMIN_PASSWORD=$(genRandomPassword)
+
+FORCE=0
 
 function main()
 {
