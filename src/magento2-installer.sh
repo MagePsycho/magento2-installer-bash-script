@@ -479,16 +479,17 @@ function tarInstall()
     mkdir -p "$INSTALL_DIR"
     ###cp "$M2_ARCHIVE_PATH" "$INSTALL_DIR" || _die "Cannot copy files to install directory."
 
+    # Clean up installation directory
+    if [[ "$FORCE" -eq 1 ]] && [[ -f "${INSTALL_DIR}/bin/magento" ]] && [[ -f "${INSTALL_DIR}/app/etc/di.xml" ]]; then
+        _arrow "Cleaning up the installation directory..."
+        rm -rf "$INSTALL_DIR"
+        mkdir -p "$INSTALL_DIR"
+    fi
+
     _arrow "Extracting files to ${INSTALL_DIR}..."
     tar -zxf "$M2_ARCHIVE_PATH" -C "${INSTALL_DIR}" || _die "Couldn't extract file: ${M2_ARCHIVE_PATH}."
 
     cd "$INSTALL_DIR" || _die "Couldn't change directory to : ${INSTALL_DIR}."
-
-    # Clean up installation directory
-    if [[ "$FORCE" -eq 1 ]] && [[ -f './bin/magento' ]] && [[ -f './app/etc/di.xml' ]]; then
-        rm -rf ./*
-        rm -rf ./.*
-    fi
 
     # Finally move all the files from sub-folder to the www dir
     mv "magento2-$M2_VERSION"/{.[!.],}* ./ || _die "Couldn't move files to : ${INSTALL_DIR}."
