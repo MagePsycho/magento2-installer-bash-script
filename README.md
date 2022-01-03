@@ -1,7 +1,6 @@
 # Simplistic Magento 2 Installer
 
-This bash script helps you to install Magento2 from different sources (`tar`, `composer` etc.) with sample data.
-
+This bash script helps you to quickly install Magento2 from different sources (`tar`, `composer` etc.) with sample data for development purpose.
 
 ## INSTALL
 You can simply download the script file and give the executable permission.
@@ -30,18 +29,18 @@ m2-installer --help
 
 ### To install Magento CE v2.4.3 (with sample data)
 ```
-./m2-installer --version=2.4.3 --base-url=magento243.test --install-sample-data --db-user=root --db-pass=pass --db-name=magento243
+m2-installer --version=2.4.3 --base-url=magento243.test --install-sample-data --db-user=root --db-pass=pass --db-name=magento243
 ```
 
-*If `--source` option is not passed, default `tar` source is used for downloading.*
+*If `--source` option is not passed, default `tar` source is used for downloading.*  
 
 If you want to install via `composer`, you can simply use `--source=composer` option:
 ```
-./m2-installer --source=composer --version=2.4.3 --base-url=magento243.test --install-sample-data --db-user=root --db-pass=pass --db-name=magento243
+m2-installer --source=composer --version=2.4.3 --base-url=magento243.test --install-sample-data --db-user=root --db-pass=pass --db-name=magento243
 ```
 
 #### Notes
-Since `elasticsearch` is the default search engine since v2.4.0 onwards. Make sure to install it prior to M2 installation.  
+Since `elasticsearch` is the default search engine since `v2.4.0` onwards. Make sure to install it prior to M2 installation.  
 
 You can explicitly pass `elasticsearch` params as
 - `--search-engine` (default: `elasticsearch7`)
@@ -56,32 +55,33 @@ m2-installer --version=2.4.3 --base-url=magento243.test --db-user=root --db-pass
 
 ### To install Magento CE 2.4.3 (without sample data)
 ```
-./m2-installer.sh --version=2.4.3 --base-url=magento243.test --db-user=root --db-pass=pass --db-name=magento243
+m2-installer --version=2.4.3 --base-url=magento243.test --db-user=root --db-pass=pass --db-name=magento243
 ```
 
 ### To install Magento with Redis Caching
-If you want to use `redis` as session, frontend and full-page caching, you have to use the following params:
+If you want to use `redis` as session storage, frontend and full-page caching, you have to use the following params:
 - `--use-redis-cache` (required)
 - `--redis-host` (optional, default: `127.0.0.1`)
 - `--redis-port` (optional, default: `6379`)
 
 Usage example:
 ```
-./m2-installer.sh --version=2.4.3 --base-url=magento243.test --db-user=root --db-pass=pass --db-name=magento243 --use-redis-cache
+m2-installer --version=2.4.3 --base-url=magento243.test --db-user=root --db-pass=pass --db-name=magento243 --use-redis-cache
+m2-installer --version=2.4.3 --base-url=magento243.test --db-user=root --db-pass=pass --db-name=magento243 --use-redis-cache --redis-host=127.0.0.1 --redis-port=6379
 ```
 
 ### Use of `--force` option
 Use `--force` option, if you want to
-- forcefully drop the database if exists 
-- clean up the directory prior installation
-- skip the installation inputs as wizard
+- Forcefully drop the database if exists 
+- Clean up the directory prior installation
+- Skip the installation wizard/confirmation
 
 
 ## BONUS
 After installation, you can create virtual host with this FREE bash script - 
 https://github.com/MagePsycho/nginx-virtual-host-bash-script
 ```
-sudo ./vhost-nginx.sh --domain=magento243.test --app=magento2
+sudo vhost-nginx --domain=magento243.test --app=magento2
 ```
 
 ## RoadMap
