@@ -139,6 +139,45 @@ function _checkRootUser()
 
 }
 
+function _semVerToInt() {
+  local _semVer
+  _semVer="${1:?No version number supplied}"
+  _semVer="${_semVer//[^0-9.]/}"
+  # shellcheck disable=SC2086
+  set -- ${_semVer//./ }
+  printf -- '%d%02d%02d' "${1}" "${2:-0}" "${3:-0}"
+}
+
+function _selfUpdate()
+{
+    local _tmpFile _newVersion
+    _tmpFile=$(mktemp -p "" "XXXXX.sh")
+    curl -s -L "$SCRIPT_URL" > "$_tmpFile" || _die "Couldn't download the file"
+    _newVersion=$(awk -F'[="]' '/^VERSION=/{print $3}' "$_tmpFile")
+    if [[ "$(_semVerToInt $VERSION)" < "$(_semVerToInt $_newVersion)" ]]; then
+        printf "Updating script \e[31;1m%s\e[0m -> \e[32;1m%s\e[0m\n" "$VERSION" "$_newVersion"
+        printf "(Run command: %s --version to check the version)" "$(basename "$0")"
+        mv -v "$_tmpFile" "$ABS_SCRIPT_PATH" || _die "Unable to update the script"
+        # rm "$_tmpFile" || _die "Unable to clean the temp file: $_tmpFile"
+        # @todo make use of trap
+        # trap "rm -f $_tmpFile" EXIT
+    else
+         _arrow "Already the latest version."
+    fi
+    exit 1
+}
+
+function _printVersion()
+{
+    echo "Version $VERSION"
+}
+
+function _printVersionAndExit()
+{
+    _printVersion
+    exit 1
+}
+
 function _printPoweredBy()
 {
     local mp_ascii
@@ -179,7 +218,7 @@ Version $VERSION
                                     Refer - https://github.com/magento/magento2/releases
         --install-dir               Magento2 installation directory (Default: Current)
         --base-url                  Base URL
-        --install-sample-data       Install sample data (Default: 0)
+        --install-sample-data       Install sample data (Default: disabled)
         --setup-mode                Setup Mode (Default: developer)
 
         --db-host                   DB host (Default: localhost)
@@ -187,6 +226,17 @@ Version $VERSION
         --db-pass                   DB pass
         --db-name                   DB name
         --db-prefix                 DB prefix
+
+        --use-secure                Enable https URLs (Default: disabled)
+
+        --search-engine             Search engine, used for  v2.4.0 or later (Default: elasticsearch7)
+        --elasticsearch-host        Elasticsearch host (Default: 127.0.0.1)
+        --elasticsearch-port        Elasticsearch port (Default: 9200)
+        --elasticsearch-index       Elasticsearch index prefix (Default: magento2)
+
+        --use-redis-cache           Enable Redis cache for session, frontend & full-page (Default: disabled)
+        --redis-host                Redis host (Default: 127.0.0.1)
+        --redis-port                Redis port (Default: 6379)
 
         --admin-firstname           Admin firstname (Default: John)
         --admin-lastname            Admin lastname (Default: Doe)
@@ -201,9 +251,13 @@ Version $VERSION
         --force                     Forcefully drops the DB if exists & cleans up the installation directory
 
         -h,     --help              Display this help and exit
+        -su,    --update            Self update
+                --self-update
 
     Examples:
         $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=...
+        $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=... --use-redis-cache --redis-host=...
+        $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=... --elasticsearch-host=...
 
 "
     _printPoweredBy
@@ -231,9 +285,6 @@ function processArgs()
             --download-dir=*)
                 DOWNLOAD_DIR="${arg#*=}"
             ;;
-            #--create-virtual-host)
-            #    CREATE_VIRTUAL_HOST=1
-            #;;
             --install-dir=*)
                 INSTALL_DIR="${arg#*=}"
             ;;
@@ -261,6 +312,28 @@ function processArgs()
             --db-prefix=*)
                 DB_PREFIX="${arg#*=}"
             ;;
+            --search-engine=*)
+                SEARCH_ENGINE="${arg#*=}"
+            ;;
+            --elasticsearch-host=*)
+                ELASTICSEARCH_HOST="${arg#*=}"
+            ;;
+            --elasticsearch-port=*)
+                ELASTICSEARCH_PORT="${arg#*=}"
+            ;;
+            --elasticsearch-index=*)
+                ELASTICSEARCH_INDEX_PREFIX="${arg#*=}"
+            ;;
+            --use-redis-cache)
+                CACHING_TYPE="redis"
+                SESSION_SAVE="redis"
+            ;;
+            --redis-host=*)
+                REDIS_HOST="${arg#*=}"
+            ;;
+            --redis-port=*)
+                REDIS_PORT="${arg#*=}"
+            ;;
             --admin-firstname=*)
                 ADMIN_FIRSTNAME="${arg#*=}"
             ;;
@@ -284,6 +357,9 @@ function processArgs()
             ;;
             --timezone=*)
                 TIMEZONE="${arg#*=}"
+            ;;
+            --use-secure)
+                USE_SECURE=1
             ;;
             --force)
                 FORCE=1
@@ -400,12 +476,11 @@ function prepareDownloadDir()
 
 function prepareBaseUrl()
 {
-    BASE_URL="http://$(getDomainFromUrl)/"
-}
-
-function prepareSecureBaseUrl()
-{
-    BASE_URL_SECURE="https://$(getDomainFromUrl)"
+    local _httpProtocal="http"
+    if [[ "$USE_SECURE" -eq 1 ]]; then
+        _httpProtocal="https"
+    fi
+    BASE_URL="${_httpProtocal}://$(getDomainFromUrl)/"
 }
 
 function getDomainFromUrl()
@@ -534,31 +609,68 @@ function installMagento()
 {
     _arrow "Installing Magento2..."
     prepareBaseUrl
-    prepareSecureBaseUrl
 
-    php -d memory_limit=-1 ./bin/magento setup:install \
-        --base-url="$BASE_URL" \
-        --db-host="$DB_HOST" \
-        --db-name="$DB_NAME" \
-        --db-user="$DB_USER" \
-        --db-password="$DB_PASS" \
-        --backend-frontname="$BACKEND_FRONTNAME" \
-        --admin-firstname="$ADMIN_FIRSTNAME" \
-        --admin-lastname="$ADMIN_LASTNAME" \
-        --admin-email="$ADMIN_EMAIL" \
-        --admin-user="$ADMIN_USER" \
-        --admin-password="$ADMIN_PASSWORD" \
-        --language="$LANGUAGE" \
-        --currency="$CURRENCY" \
-        --timezone="$TIMEZONE" \
-        --cleanup-database \
-        --session-save="$SESSION_SAVE" \
-        --use-rewrites=1
+    # REF - https://devdocs.magento.com/guides/v2.4/install-gde/install/cli/install-cli.html
+    local _installOpts=(
+      "--base-url=${BASE_URL}"
+      "--db-host=${DB_HOST}"
+      "--db-name=${DB_NAME}"
+      "--db-user=${DB_USER}"
+      "--db-password=${DB_PASS}"
+      "--backend-frontname=${BACKEND_FRONTNAME}"
+      "--admin-firstname=${ADMIN_FIRSTNAME}"
+      "--admin-lastname=${ADMIN_LASTNAME}"
+      "--admin-email=${ADMIN_EMAIL}"
+      "--admin-user=${ADMIN_USER}"
+      "--admin-password=${ADMIN_PASSWORD}"
+      "--language=${LANGUAGE}"
+      "--currency=${CURRENCY}"
+      "--timezone=${TIMEZONE}"
+      "--use-rewrites=1"
+      "--cleanup-database"
+    )
 
-    # @todo ssl installation
-    #--use-secure=1
-    #--base-url-secure=$BASE_URL_SECURE
-    #--use-secure-admin=1
+    # Configure Elasticsearch
+    if [[ "$(_semVerToInt ${M2_VERSION})" -ge 240 ]]; then
+      _installOpts+=(
+        "--search-engine=${SEARCH_ENGINE}"
+        "--elasticsearch-host=${ELASTICSEARCH_HOST}"
+        "--elasticsearch-port=${ELASTICSEARCH_PORT}"
+        "--elasticsearch-index-prefix=${ELASTICSEARCH_INDEX_PREFIX}"
+        "--elasticsearch-enable-auth=0"
+        "--elasticsearch-timeout=15"
+      )
+    fi
+    
+    if [[ "$CACHING_TYPE" = "redis" ]]; then
+      _installOpts+=(
+        "--session-save=${SESSION_SAVE}"
+        "--session-save-redis-host=${REDIS_HOST}"
+        "--session-save-redis-port=${REDIS_PORT}"
+        "--session-save-redis-db=2"
+        "--session-save-redis-max-concurrency=20"
+        "--cache-backend=redis"
+        "--cache-backend-redis-server=${REDIS_HOST}"
+        "--cache-backend-redis-db=0"
+        "--cache-backend-redis-port=${REDIS_PORT}"
+        "--page-cache=redis"
+        "--page-cache-redis-server=${REDIS_HOST}"
+        "--page-cache-redis-db=1"
+        "--page-cache-redis-port=${REDIS_PORT}"
+      )
+    else
+      "--session-save=${SESSION_SAVE}"
+    fi
+
+    if [[ "$USE_SECURE" -eq 1 ]]; then
+      _installOpts+=(
+        "--use-secure=1"
+        "--base-url-secure=${BASE_URL}"
+        "--use-secure-admin=1"
+      )
+    fi
+
+    php -d memory_limit=-1 ./bin/magento setup:install "${_installOpts[@]}"
 }
 
 function installSampleData()
@@ -702,8 +814,6 @@ SOURCE_PATH=
 M2_EDITION='community'
 M2_VERSION=
 M2_SETUP_MODE=developer
-CREATE_VIRTUAL_HOST=0
-
 INSTALL_SAMPLE_DATA=0
 
 # setup:install Settings
@@ -712,7 +822,8 @@ DB_USER=root
 LANGUAGE='en_US'
 CURRENCY='USD'
 TIMEZONE='America/Chicago'
-SESSION_SAVE='db' #files
+SESSION_SAVE='files'
+CACHING_TYPE=
 
 # @todo add option from ~/.mage2_installer.conf
 # Admin Settings
@@ -723,6 +834,18 @@ ADMIN_EMAIL='admin@example.com'
 ADMIN_USER='admin'
 ADMIN_PASSWORD=$(genRandomPassword)
 
+# Elasticsearch
+SEARCH_ENGINE='elasticsearch7'
+ELASTICSEARCH_HOST='127.0.0.1'
+ELASTICSEARCH_PORT=9200
+ELASTICSEARCH_INDEX_PREFIX='magento2'
+
+# Redis
+REDIS_HOST='127.0.0.1'
+REDIS_PORT=6379
+
+USE_SECURE=0
+
 FORCE=0
 
 function main()
@@ -731,7 +854,7 @@ function main()
 
     [[ $# -lt 1 ]] && _printUsage
 
-    # @todo load config from ~/.mage2_installer.conf directory
+    # @todo load config from ~/.m2_installer.conf or ./.m2_installer.conf directory
     # loadConfigFile
 
     processArgs "$@"
