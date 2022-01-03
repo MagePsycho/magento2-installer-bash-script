@@ -4,41 +4,45 @@
 # Script to install Magento2
 #
 # @author   Raj KB <magepsycho@gmail.com>
-# @website  http://www.magepsycho.com
+# @website  https://www.magepsycho.com
 # @version  0.1.2
 
-# UnComment it if bash is lower than 4.x version
-shopt -s extglob
+# Exit on error. Append "|| true" if you expect an error.
+#set -o errexit
+# Exit on error inside any functions or subshells.
+#set -o errtrace
+# Do not allow use of undefined vars. Use ${VAR:-} to use an undefined VAR
+#set -o nounset
+# Catch the error in case mysqldump fails (but gzip succeeds) in `mysqldump | gzip`
+#set -o pipefail
+# Turn on traces, useful while debugging but commented out by default
+# set -o xtrace
 
 ################################################################################
 # CORE FUNCTIONS - Do not edit
 ################################################################################
-
-## Uncomment it for debugging purpose
-###set -o errexit
-#set -o pipefail
-#set -o nounset
-#set -o xtrace
-
 #
 # VARIABLES
 #
 _bold=$(tput bold)
+_italic="\e[3m"
 _underline=$(tput sgr 0 1)
 _reset=$(tput sgr0)
 
+_black=$(tput setaf 0)
 _purple=$(tput setaf 171)
 _red=$(tput setaf 1)
 _green=$(tput setaf 76)
 _tan=$(tput setaf 3)
 _blue=$(tput setaf 38)
+_white=$(tput setaf 7)
 
 #
 # HEADERS & LOGGING
 #
 function _debug()
 {
-    if [[ "$DEBUG" = 1 ]]; then
+    if [[ "$DEBUG" -eq 1 ]]; then
         "$@"
     fi
 }
@@ -96,22 +100,53 @@ function _safeExit()
 #
 # UTILITY HELPER
 #
+function _seekValue()
+{
+    local _msg="${_green}$1${_reset}"
+    local _readDefaultValue="$2"
+    READVALUE=
+    if [[ "${_readDefaultValue}" ]]; then
+        _msg="${_msg} ${_white}[${_reset}${_green}${_readDefaultValue}${_reset}${_white}]${_reset}"
+    else
+        _msg="${_msg} ${_white}[${_reset} ${_white}]${_reset}"
+    fi
+
+    _msg="${_msg}: "
+    printf "%s\n➜ " "$_msg"
+    read READVALUE
+
+    # Inline input
+    #_msg="${_msg}: "
+    #read -r -p "$_msg" READVALUE
+
+    if [[ $READVALUE = [Nn] ]]; then
+        READVALUE=''
+        return
+    fi
+    if [[ -z "${READVALUE}" ]] && [[ "${_readDefaultValue}" ]]; then
+        READVALUE=${_readDefaultValue}
+    fi
+}
+
 function _seekConfirmation()
 {
-  printf '\n%s%s%s' "$_bold" "$@" "$_reset"
-  read -p " (y/n) " -n 1
-  printf '\n'
+    read -r -p "${_bold}${1:-Are you sure? [y/N]}${_reset} " response
+    case "$response" in
+        [yY][eE][sS]|[yY])
+            retval=0
+            ;;
+        *)
+            retval=1
+            ;;
+    esac
+    return $retval
 }
 
 # Test whether the result of an 'ask' is a confirmation
 function _isConfirmed()
 {
-    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-        return 0
-    fi
-    return 1
+    [[ "$REPLY" =~ ^[Yy]$ ]]
 }
-
 
 function _typeExists()
 {
@@ -129,14 +164,18 @@ function _isOs()
     return 1
 }
 
+function _isOsDebian()
+{
+    [[ -f /etc/debian_version ]]
+}
+
 function _checkRootUser()
 {
     #if [ "$(id -u)" != "0" ]; then
-    if [ "$(whoami)" != 'root' ]; then
+    if [[ "$(whoami)" != 'root' ]]; then
         echo "You have no permission to run $0 as non-root user. Use sudo"
         exit 1;
     fi
-
 }
 
 function _semVerToInt() {
@@ -167,21 +206,10 @@ function _selfUpdate()
     exit 1
 }
 
-function _printVersion()
-{
-    echo "Version $VERSION"
-}
-
-function _printVersionAndExit()
-{
-    _printVersion
-    exit 1
-}
-
 function _printPoweredBy()
 {
-    local mp_ascii
-    mp_ascii='
+    local _mpAscii
+    _mpAscii='
    __  ___              ___               __
   /  |/  /__ ____ ____ / _ \___ __ ______/ /  ___
  / /|_/ / _ `/ _ `/ -_) ___(_-</ // / __/ _ \/ _ \
@@ -191,7 +219,7 @@ function _printPoweredBy()
     cat <<EOF
 ${_green}
 Powered By:
-$mp_ascii
+$_mpAscii
 
  >> Store: ${_reset}${_underline}${_blue}https://www.magepsycho.com${_reset}${_reset}${_green}
  >> Blog:  ${_reset}${_underline}${_blue}https://blog.magepsycho.com${_reset}${_reset}${_green}
@@ -251,14 +279,13 @@ Version $VERSION
         --force                     Forcefully drops the DB if exists & cleans up the installation directory
 
         -h,     --help              Display this help and exit
-        -su,    --update            Self update
+        -su,    --update            Self-update the script from Git repository
                 --self-update
 
     Examples:
         $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=...
         $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=... --use-redis-cache --redis-host=...
         $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=... --elasticsearch-host=...
-
 "
     _printPoweredBy
     exit 1
@@ -368,6 +395,9 @@ function processArgs()
                 DEBUG=1
                 set -o xtrace
             ;;
+            -u|--update|--self-update)
+                _selfUpdate
+            ;;
             -h|--help)
                 _printUsage
             ;;
@@ -394,7 +424,7 @@ function validateArgs()
         _error "Install source must be one of tar|composer."
     fi
 
-    if [[ ! -z "$M2_VERSION" ]] && [[ "$INSTALL_SOURCE" == 'tar' ]]; then
+    if [[ "$M2_VERSION" ]] && [[ "$INSTALL_SOURCE" == 'tar' ]]; then
         prepareM2GitTarUrl
         if ! `validateUrl $SOURCE_PATH`; then
             _error "Magento2 tar with version '${M2_VERSION}' doesn't exist."
@@ -403,7 +433,7 @@ function validateArgs()
     fi
 
     # Prepare & validate installation directory
-    if [[ ! -z "$INSTALL_DIR" ]]; then
+    if [[ "$INSTALL_DIR" ]]; then
         prepareInstallDir
         if ! mkdir -p "$INSTALL_DIR"; then
             _error "--install-dir is not writable."
@@ -427,14 +457,14 @@ function validateArgs()
         ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
 
-    if [[ ! -z "$DB_PASS" ]] && [[ ! -z "$DB_NAME" ]]; then
+    if [[ "$DB_PASS" ]] && [[ "$DB_NAME" ]]; then
         mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e exit
         if [[ $? -eq 0  ]]; then
             if [[ "$FORCE" -eq 0 ]]; then
                 if mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "USE $DB_NAME"; then
-                    _error "Database '$DB_NAME' already exists."
-                    _arrow "Use --force to drop the database."
-                    ERROR_COUNT=$((ERROR_COUNT + 1))
+                    _note "Database '$DB_NAME' already exists."
+                    #_arrow "Use --force to drop the database."
+                    #ERROR_COUNT=$((ERROR_COUNT + 1))
                 fi
             fi
         else
@@ -446,7 +476,7 @@ function validateArgs()
     [[ "$ERROR_COUNT" -gt 0 ]] && exit 1
 }
 
-function validateUrl ()
+function validateUrl()
 {
     #if [[ `curl -s --head "$1" | head -n 1 | grep "HTTP/[1-3].[0-9] [23].."` ]]
     if [[ `wget -S --no-check-certificate --secure-protocol=TLSv1_2 --spider $1 2>&1 | grep 'HTTP/1.1 200 OK'` ]]; then
@@ -461,10 +491,10 @@ function validateUrl ()
 function sanitizeArgs()
 {
     # remove trailing /
-    if [[ ! -z "$INSTALL_DIR" ]]; then
+    if [[ "$INSTALL_DIR" ]]; then
         INSTALL_DIR="${INSTALL_DIR%/}"
     fi
-    if [[ ! -z "$DOWNLOAD_DIR" ]]; then
+    if [[ "$DOWNLOAD_DIR" ]]; then
         DOWNLOAD_DIR="${DOWNLOAD_DIR%/}"
     fi
 }
@@ -476,11 +506,11 @@ function prepareDownloadDir()
 
 function prepareBaseUrl()
 {
-    local _httpProtocal="http"
+    local _httpProtocol="http"
     if [[ "$USE_SECURE" -eq 1 ]]; then
-        _httpProtocal="https"
+        _httpProtocol="https"
     fi
-    BASE_URL="${_httpProtocal}://$(getDomainFromUrl)/"
+    BASE_URL="${_httpProtocol}://$(getDomainFromUrl)/"
 }
 
 function getDomainFromUrl()
@@ -641,10 +671,10 @@ function installMagento()
         "--elasticsearch-timeout=15"
       )
     fi
-    
+
     if [[ "$CACHING_TYPE" = "redis" ]]; then
       _installOpts+=(
-        "--session-save=${SESSION_SAVE}"
+        "--session-save=redis"
         "--session-save-redis-host=${REDIS_HOST}"
         "--session-save-redis-port=${REDIS_PORT}"
         "--session-save-redis-db=2"
@@ -741,31 +771,37 @@ function verifyCurrentDirIsMage2Root()
 function checkCmdDependencies()
 {
     local _dependencies=(
-      php
-      composer
-      mysql
-      mysqladmin
-      git
-      wget
-      cat
-      basename
-      tar
-      gunzip
-      mkdir
-      cp
-      mv
-      rm
-      chown
-      chmod
-      date
-      find
-      awk
+        php
+        composer
+        mysql
+        mysqladmin
+        git
+        wget
+        cat
+        basename
+        tar
+        gunzip
+        mkdir
+        cp
+        mv
+        rm
+        chown
+        chmod
+        date
+        find
+        awk
     )
-
-    for cmd in "${_dependencies[@]}"
-    do
-        hash "${cmd}" &>/dev/null || _die "'${cmd}' command not found."
-    done;
+    local _depMissing
+    local _depCounter=0
+    for dependency in "${_dependencies[@]}"; do
+        if ! command -v "$dependency" >/dev/null 2>&1; then
+            _depCounter=$(( _depCounter + 1 ))
+            _depMissing="${_depMissing} ${dependency}"
+        fi
+    done
+    if [[ "${_depCounter}" -gt 0 ]]; then
+      _die "Could not find the following dependencies:${_depMissing}"
+    fi
 }
 
 function checkMage2Dependencies()
@@ -803,7 +839,7 @@ export LANG=C
 
 DEBUG=0
 _debug set -x
-VERSION="0.1.2"
+VERSION="0.1.3"
 
 # Defaults
 CURRENT_DIR=$(basename "$(pwd)")
@@ -825,7 +861,7 @@ TIMEZONE='America/Chicago'
 SESSION_SAVE='files'
 CACHING_TYPE=
 
-# @todo add option from ~/.mage2_installer.conf
+# @todo add option from ~/.m2-installer.conf
 # Admin Settings
 BACKEND_FRONTNAME="admin_$(genAdminFrontname)"
 ADMIN_FIRSTNAME='John'
@@ -854,7 +890,7 @@ function main()
 
     [[ $# -lt 1 ]] && _printUsage
 
-    # @todo load config from ~/.m2_installer.conf or ./.m2_installer.conf directory
+    # @todo load config from ~/.m2-installer.conf or ./.m2-installer.conf directory
     # loadConfigFile
 
     processArgs "$@"
