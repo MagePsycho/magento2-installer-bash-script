@@ -31,14 +31,15 @@ m2-installer --help
 ```
 m2-installer --version=2.4.3 --base-url=magento243.test --install-sample-data --db-user=root --db-pass=pass --db-name=magento243
 ```
-
-*If `--source` option is not passed, default `tar` source is used for downloading.*  
+- `--install-sample-data` option is required to install the sample data.
 
 If you want to install via `composer`, you can simply use `--source=composer` option:
 ```
 m2-installer --source=composer --version=2.4.3 --base-url=magento243.test --install-sample-data --db-user=root --db-pass=pass --db-name=magento243
 ```
+*If `--source` option is not passed, default `tar` source is used for downloading.*
 
+**Notes**  
 *Since `elasticsearch` is the default search engine since `v2.4.0` onwards. Make sure to install it prior to M2 installation*  
 
 You can explicitly pass `elasticsearch` params as
@@ -71,9 +72,13 @@ m2-installer --version=2.4.3 --base-url=magento243.test --db-user=root --db-pass
 
 ### Use of `--force` option
 Use `--force` option, if you want to
-- Forcefully drop the database if exists 
-- Clean up the directory prior installation
 - Skip the installation wizard/confirmation
+- Clean up the directory prior installation
+
+Usage example:
+```
+m2-installer --version=2.4.3 --base-url=magento243.test --db-user=root --db-pass=pass --db-name=magento243 --force
+```
 
 ### Use of config files 
 If you repeatedly install Magento on your development machine, it is recommended to use the config file in one of the following locations:
@@ -139,7 +144,11 @@ warden shell
 ```
 After login to the container, you can download the script (as mentioned above) and install Magento as
 ```
-m2-installer --version=2.4.3 --base-url=app.<project>.test --db-host=<project>_db_1 --db-user=magento --db-pass=magento --db-name=magento --elasticsearch-host=<project>_elasticsearch_1 --use-redis-cache --redis-host=<project>_redis_1
+# With sample data
+m2-installer --version=2.4.3 --install-sample-data --use-secure --base-url=app.<project>.test --db-host=<project>_db_1 --db-user=magento --db-pass=magento --db-name=magento --elasticsearch-host=<project>_elasticsearch_1 --use-redis-cache --redis-host=<project>_redis_1 --force
+
+# Without sample data
+m2-installer --version=2.4.3 --use-secure --base-url=app.<project>.test --db-host=<project>_db_1 --db-user=magento --db-pass=magento --db-name=magento --elasticsearch-host=<project>_elasticsearch_1 --use-redis-cache --redis-host=<project>_redis_1 --force
 ```
 
 ## BONUS 2
