@@ -139,7 +139,7 @@ warden shell
 ```
 After login to the container, you can download the script (as mentioned above) and install Magento as
 ```
-m2-installer --version=2.4.3 --base-url=app.<project>.test --db-host=<project>_db_1 --db-user=magento --db-pass=magento --db-name=magento --elasticsearch-host=<project>_elasticsearch_1 --use-redis-cache --redis-host=<project>_db_1
+m2-installer --version=2.4.3 --base-url=app.<project>.test --db-host=<project>_db_1 --db-user=magento --db-pass=magento --db-name=magento --elasticsearch-host=<project>_elasticsearch_1 --use-redis-cache --redis-host=<project>_redis_1
 ```
 
 ## BONUS 2
