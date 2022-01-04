@@ -131,7 +131,18 @@ m2-installer --self-update
 ```
 *Note: This option will only work for version > 0.1.2*
 
-## BONUS
+### BONUS 1
+You can use this script to quickly install the Magento in your beloved [warden](https://github.com/davidalger/warden) environment
+```
+cd /path/to/warden/m2/project
+warden shell
+```
+After login to the container, you can download the script (as mentioned above) and install Magento as
+```
+m2-installer --version=2.4.3 --base-url=app.<project>.test --db-host=<project>_db_1 --db-user=magento --db-pass=magento --db-name=magento --elasticsearch-host=<project>_elasticsearch_1 --use-redis-cache --redis-host=<project>_db_1
+```
+
+## BONUS 2
 After installation, you can create virtual host with this FREE bash script - 
 https://github.com/MagePsycho/nginx-virtual-host-bash-script
 ```
