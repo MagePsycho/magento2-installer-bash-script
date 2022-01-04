@@ -5,7 +5,7 @@
 #
 # @author   Raj KB <magepsycho@gmail.com>
 # @website  https://www.magepsycho.com
-# @version  0.1.2
+# @version  0.1.3
 
 # Exit on error. Append "|| true" if you expect an error.
 #set -o errexit

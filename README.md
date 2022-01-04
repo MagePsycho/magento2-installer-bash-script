@@ -25,7 +25,7 @@ mv m2-installer.sh ~/bin/m2-installer
 m2-installer --help
 ```
 
-![Mage2Backup Help](https://github.com/MagePsycho/magento2-installer-bash-script/raw/master/docs/magento2-installer-bash-script-help.png "Magento2 Installer Help")
+![Magento 2 Installer Help](https://github.com/MagePsycho/magento2-installer-bash-script/raw/master/docs/magento2-installer-bash-script-help-v0.1.3.png "Magento2 Installer Help")
 
 ### To install Magento CE v2.4.3 (with sample data)
 ```
@@ -39,8 +39,7 @@ If you want to install via `composer`, you can simply use `--source=composer` op
 m2-installer --source=composer --version=2.4.3 --base-url=magento243.test --install-sample-data --db-user=root --db-pass=pass --db-name=magento243
 ```
 
-#### Notes
-Since `elasticsearch` is the default search engine since `v2.4.0` onwards. Make sure to install it prior to M2 installation.  
+*Since `elasticsearch` is the default search engine since `v2.4.0` onwards. Make sure to install it prior to M2 installation*  
 
 You can explicitly pass `elasticsearch` params as
 - `--search-engine` (default: `elasticsearch7`)
@@ -76,6 +75,11 @@ Use `--force` option, if you want to
 - Clean up the directory prior installation
 - Skip the installation wizard/confirmation
 
+### To update the script
+```
+m2-installer --self-update
+```
+*Note: This option will only work for version > 0.1.2*
 
 ## BONUS
 After installation, you can create virtual host with this FREE bash script - 
