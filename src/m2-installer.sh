@@ -621,7 +621,7 @@ function tarInstall()
 
 function createDbIfNotExists()
 {
-    if ! mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e 'USE ${DB_NAME}'; then
+    if ! mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "USE ${DB_NAME}"; then
         _arrow "Creating database ${DB_NAME}..."
         mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME}" || _die "Couldn't create database: ${DB_NAME}."
     else
