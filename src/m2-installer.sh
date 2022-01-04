@@ -426,7 +426,7 @@ function validateArgs()
 
     if [[ "$M2_VERSION" ]] && [[ "$INSTALL_SOURCE" == 'tar' ]]; then
         prepareM2GitTarUrl
-        if ! `validateUrl $SOURCE_PATH`; then
+        if ! $(validateUrl $SOURCE_PATH); then
             _error "Magento2 tar with version '${M2_VERSION}' doesn't exist."
             ERROR_COUNT=$((ERROR_COUNT + 1))
         fi
@@ -459,15 +459,7 @@ function validateArgs()
 
     if [[ "$DB_PASS" ]] && [[ "$DB_NAME" ]]; then
         mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e exit
-        if [[ $? -eq 0  ]]; then
-            if [[ "$FORCE" -eq 0 ]]; then
-                if mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "USE $DB_NAME"; then
-                    _note "Database '$DB_NAME' already exists."
-                    #_arrow "Use --force to drop the database."
-                    #ERROR_COUNT=$((ERROR_COUNT + 1))
-                fi
-            fi
-        else
+        if [[ $? -eq 1  ]]; then
             _error "Unable to connect the database. Please re-check the --db-* parameters."
             ERROR_COUNT=$((ERROR_COUNT + 1))
         fi
@@ -552,8 +544,10 @@ function composerInstall()
     fi
     verifyCurrentDirIsMage2Root
 
+    beforeInstall
+
     # if db already exists, throws SQL error
-    createDb
+    createDbIfNotExists
     setFilesystemPermission
     installMagento
 
@@ -604,8 +598,10 @@ function tarInstall()
     fi
     verifyCurrentDirIsMage2Root
 
+    beforeInstall
+
     # if db already exists, throws SQL error
-    createDb
+    createDbIfNotExists
 
     setFilesystemPermission
 
@@ -623,16 +619,71 @@ function tarInstall()
     afterInstall
 }
 
-function createDb()
+function createDbIfNotExists()
 {
-    _arrow "Creating database ${DB_NAME}..."
-    mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME}" || _die "Couldn't create database: ${DB_NAME}."
+    if ! mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e 'USE ${DB_NAME}'; then
+        _arrow "Creating database ${DB_NAME}..."
+        mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME}" || _die "Couldn't create database: ${DB_NAME}."
+    else
+        _arrow "Skipping: database ${DB_NAME} already exists..."
+    fi
 }
 
 function dropDb()
 {
     _arrow "Dropping database ${DB_NAME}..."
     mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "DROP DATABASE IF EXISTS $DB_NAME" || _die "Couldn't drop database: ${DB_NAME}."
+}
+
+function initUserInputWizard()
+{
+    _note "Press [enter] if you want to use the default value."
+
+    _seekValue "Enter Magento Edition" "${M2_EDITION}"
+    M2_EDITION=${READVALUE}
+
+    _seekValue "Enter Magento Version" "${M2_VERSION}"
+    M2_VERSION=${READVALUE}
+
+    _seekValue "Install Sample Data" "${INSTALL_SAMPLE_DATA}"
+    INSTALL_SAMPLE_DATA=${READVALUE}
+
+    _seekValue "Enter Base URL" "${BASE_URL}"
+    BASE_URL=${READVALUE}
+
+    _seekValue "Use Secure" "${USE_SECURE}"
+    USE_SECURE=${READVALUE}
+
+    _seekValue "Enter DB Host" "${DB_HOST}"
+    DB_HOST=${READVALUE}
+
+    _seekValue "Enter DB User" "${DB_USER}"
+    DB_USER=${READVALUE}
+
+    _seekValue "Enter DB Pass" "${DB_PASS}"
+    DB_PASS=${READVALUE}
+
+    if [[ "$(_semVerToInt ${M2_VERSION})" -ge 240 ]]; then
+        _seekValue "Enter Search Engine" "${SEARCH_ENGINE}"
+        SEARCH_ENGINE=${READVALUE}
+
+        _seekValue "Enter Elasticsearch Host" "${ELASTICSEARCH_HOST}"
+        ELASTICSEARCH_HOST=${READVALUE}
+
+        _seekValue "Enter Elasticsearch Port" "${ELASTICSEARCH_PORT}"
+        ELASTICSEARCH_PORT=${READVALUE}
+
+        _seekValue "Enter Elasticsearch Index Prefix" "${ELASTICSEARCH_INDEX_PREFIX}"
+        ELASTICSEARCH_INDEX_PREFIX=${READVALUE}
+    fi
+
+    if [[ "$CACHING_TYPE" = "redis" ]]; then
+        _seekValue "Enter Redis Host" "${REDIS_HOST}"
+        REDIS_HOST=${READVALUE}
+
+        _seekValue "Enter Redis Port" "${REDIS_PORT}"
+        REDIS_PORT=${READVALUE}
+    fi
 }
 
 function installMagento()
@@ -703,6 +754,19 @@ function installMagento()
     php -d memory_limit=-1 ./bin/magento setup:install "${_installOpts[@]}"
 }
 
+function loadConfigFile()
+{
+    # Load config if exists in home(~/)
+    if [[ -f "${HOME}/${CONFIG_FILE}" ]]; then
+        source "${HOME}/${CONFIG_FILE}"
+    fi
+
+    # Load config if exists in project (./)
+    if [[ -f "${INSTALL_DIR}/${CONFIG_FILE}" ]]; then
+        source "${INSTALL_DIR}/${CONFIG_FILE}"
+    fi
+}
+
 function installSampleData()
 {
     _arrow "Installing sample data..."
@@ -722,6 +786,14 @@ function installSampleData()
     ###composer update
 
     php -d memory_limit=-1 ./bin/magento setup:upgrade
+}
+
+function beforeInstall()
+{
+    if [[ "$FORCE" -eq 0 ]]; then
+        _arrow "Preparing the installation parameters..."
+        initUserInputWizard
+    fi
 }
 
 function afterInstall()
@@ -845,10 +917,11 @@ VERSION="0.1.3"
 CURRENT_DIR=$(basename "$(pwd)")
 INSTALL_DIR=$(pwd)
 DOWNLOAD_DIR=/tmp
+CONFIG_FILE=".m2-installer.conf"
 INSTALL_SOURCE='tar'
 SOURCE_PATH=
 M2_EDITION='community'
-M2_VERSION=
+M2_VERSION=2.4.3
 M2_SETUP_MODE=developer
 INSTALL_SAMPLE_DATA=0
 
@@ -861,9 +934,9 @@ TIMEZONE='America/Chicago'
 SESSION_SAVE='files'
 CACHING_TYPE=
 
-# @todo add option from ~/.m2-installer.conf
 # Admin Settings
-BACKEND_FRONTNAME="admin_$(genAdminFrontname)"
+#BACKEND_FRONTNAME="admin_$(genAdminFrontname)"
+BACKEND_FRONTNAME="backend"
 ADMIN_FIRSTNAME='John'
 ADMIN_LASTNAME='Doe'
 ADMIN_EMAIL='admin@example.com'
@@ -890,8 +963,7 @@ function main()
 
     [[ $# -lt 1 ]] && _printUsage
 
-    # @todo load config from ~/.m2-installer.conf or ./.m2-installer.conf directory
-    # loadConfigFile
+    loadConfigFile
 
     processArgs "$@"
 

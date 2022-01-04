@@ -75,6 +75,56 @@ Use `--force` option, if you want to
 - Clean up the directory prior installation
 - Skip the installation wizard/confirmation
 
+### Use of config files 
+If you repeatedly install Magento on your development machine, it is recommended to use the config file in one of the following locations:
+1. `~/.m2-installer.conf` - `$HOME` directory (*global scope*)
+1. `./.m2-installer.conf` - project directory (*local/project scope*)
+
+*You can copy the sample config provided in the repo `.m2-installer.conf.dist` to the desired location*
+```
+cp .m2-installer.conf.dist ~/.m2-installer.conf
+# OR
+cp .m2-installer.conf.dist ./.m2-installer.conf
+```
+
+
+And edit `.m2-installer.conf` config file as
+```
+# Web Settings
+USE_SECURE=1
+LANGUAGE='en_US'
+CURRENCY='USD'
+TIMEZONE='America/Chicago'
+
+# Storage Settings
+SESSION_SAVE='files'
+# Use 'redis' for Redis caching
+CACHING_TYPE=
+
+# Admin Settings
+BACKEND_FRONTNAME="backend"
+ADMIN_FIRSTNAME='John'
+ADMIN_LASTNAME='Doe'
+ADMIN_EMAIL='admin@example.com'
+ADMIN_USER='admin'
+ADMIN_PASSWORD=$(genRandomPassword)
+
+# DB Settings
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=root
+
+# Elasticsearch
+SEARCH_ENGINE='elasticsearch7'
+ELASTICSEARCH_HOST='127.0.0.1'
+ELASTICSEARCH_PORT=9200
+ELASTICSEARCH_INDEX_PREFIX='magento2'
+
+# Redis
+REDIS_HOST='127.0.0.1'
+REDIS_PORT=6379
+```
+
 ### To update the script
 ```
 m2-installer --self-update
@@ -89,7 +139,7 @@ sudo vhost-nginx --domain=magento243.test --app=magento2
 ```
 
 ## RoadMap
- - [ ] Support of installation parameters via config files (`~/.m2-installer.conf` or `./.m2-installer.conf`)
+ - [X] Support of installation parameters via config files (`~/.m2-installer.conf` or `./.m2-installer.conf`)
  - [ ] Support multiple compression types (`.gz`, `.zip`, `.tar.bz2`)
  - [ ] Option to install Magento 2 Enterprise Edition
  - [X] Option to install via composer

@@ -1,0 +1,33 @@
+# Web Settings
+USE_SECURE=1
+LANGUAGE='en_US'
+CURRENCY='USD'
+TIMEZONE='America/Chicago'
+
+# Storage Settings
+SESSION_SAVE='files'
+# Use 'redis' for Redis caching
+CACHING_TYPE=
+
+# Admin Settings
+BACKEND_FRONTNAME="backend"
+ADMIN_FIRSTNAME='John'
+ADMIN_LASTNAME='Doe'
+ADMIN_EMAIL='admin@example.com'
+ADMIN_USER='admin'
+ADMIN_PASSWORD=$(genRandomPassword)
+
+# DB Settings
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=root
+
+# Elasticsearch
+SEARCH_ENGINE='elasticsearch7'
+ELASTICSEARCH_HOST='127.0.0.1'
+ELASTICSEARCH_PORT=9200
+ELASTICSEARCH_INDEX_PREFIX='magento2'
+
+# Redis
+REDIS_HOST='127.0.0.1'
+REDIS_PORT=6379
