@@ -591,7 +591,11 @@ function tarInstall()
     cd "$INSTALL_DIR" || _die "Couldn't change directory to : ${INSTALL_DIR}."
 
     # Finally move all the files from sub-folder to the www dir
-    rsync -ravz --info=progress2 --delete-after "magento2-$M2_VERSION"/{.[!.],}* ./ || _die "Couldn't move files to : ${INSTALL_DIR}."
+    mv "magento2-$M2_VERSION"/{.[!.],}* ./
+    if [[ $? -ne 0 ]]; then
+        cp -rf "magento2-$M2_VERSION"/{.[!.],}* ./
+        rm -rf "magento2-$M2_VERSION"
+    fi
 
     if [[ ! -f ./nginx.conf ]]; then
         cp ./nginx.conf.sample ./nginx.conf
@@ -846,7 +850,6 @@ function checkCmdDependencies()
         php
         composer
         mysql
-        mysqladmin
         git
         wget
         cat
@@ -862,7 +865,6 @@ function checkCmdDependencies()
         date
         find
         awk
-        rsync
     )
     local _depMissing
     local _depCounter=0
