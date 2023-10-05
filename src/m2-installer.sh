@@ -351,6 +351,9 @@ function processArgs()
             --elasticsearch-index=*)
                 ELASTICSEARCH_INDEX_PREFIX="${arg#*=}"
             ;;
+            --backend-frontName=*)
+                BACKEND_FRONTNAME="${arg#*=}"
+            ;;
             --use-redis-cache)
                 CACHING_TYPE="redis"
                 SESSION_SAVE="redis"
@@ -360,6 +363,24 @@ function processArgs()
             ;;
             --redis-port=*)
                 REDIS_PORT="${arg#*=}"
+            ;;
+            --redis-session-host=*)
+                REDIS_SESSION_HOST="${arg#*=}"
+            ;;
+            --redis-session-port=*)
+                REDIS_SESSION_PORT="${arg#*=}"
+            ;;
+            --redis-default-host=*)
+                REDIS_DEFAULT_HOST="${arg#*=}"
+            ;;
+            --redis-default-port=*)
+                REDIS_DEFAULT_PORT="${arg#*=}"
+            ;;
+            --redis-fullpage-host=*)
+                REDIS_FULLPAGE_HOST="${arg#*=}"
+            ;;
+            --redis-fullpage-port=*)
+                REDIS_FULLPAGE_PORT="${arg#*=}"
             ;;
             --admin-firstname=*)
                 ADMIN_FIRSTNAME="${arg#*=}"
@@ -458,7 +479,7 @@ function validateArgs()
     fi
 
     if [[ "$DB_PASS" ]] && [[ "$DB_NAME" ]]; then
-        mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e exit
+        "$BIN_MYSQL" -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e exit
         if [[ $? -eq 1  ]]; then
             _error "Unable to connect the database. Please re-check the --db-* parameters."
             ERROR_COUNT=$((ERROR_COUNT + 1))
@@ -470,13 +491,17 @@ function validateArgs()
 
 function validateUrl()
 {
-    #if [[ `curl -s --head "$1" | head -n 1 | grep "HTTP/[1-3].[0-9] [23].."` ]]
-    if [[ `wget -S --no-check-certificate --secure-protocol=TLSv1_2 --spider $1 2>&1 | grep 'HTTP/1.1 200 OK'` ]]; then
-        # 0 = true
+    if command -v curl >/dev/null 2>&1; then
+        # @todo find appropriate command in `curl`
         return 0
     else
-        # 1 = false
-        return 1
+        if [[ `wget -S --no-check-certificate --secure-protocol=TLSv1_2 --spider $1 2>&1 | grep 'HTTP/1.1 200 OK'` ]]; then
+            # 0 = true
+            return 0
+        else
+            # 1 = false
+            return 1
+        fi
     fi
 }
 
@@ -536,7 +561,7 @@ function composerInstall()
     mkdir -p "$INSTALL_DIR"
     cd "$INSTALL_DIR" || _die "Couldn't change directory to : ${INSTALL_DIR}."
 
-    composer create-project --repository=https://repo.magento.com/ magento/project-community-edition:"${M2_VERSION}" .
+    "$BIN_COMPOSER" create-project --repository=https://repo.magento.com/ magento/project-community-edition:"${M2_VERSION}" .
     #composer create-project --repository=https://repo.magento.com/ magento/project-enterprise-edition:"${M2_VERSION}" .
 
     if [[ ! -f ./nginx.conf ]]; then
@@ -568,7 +593,11 @@ function tarInstall()
     M2_ARCHIVE_PATH="${DOWNLOAD_DIR}"/"${M2_ARCHIVE_FILE}"
     _arrow "Downloading Magento ${M2_VERSION}..."
     if [[ ! -f "$M2_ARCHIVE_PATH" ]]; then
-        wget --no-check-certificate --secure-protocol=TLSv1_2 "$SOURCE_PATH" -O "${M2_ARCHIVE_PATH}" || _die "Download failed."
+        if command -v curl >/dev/null 2>&1; then
+            curl -LJ -0 "$SOURCE_PATH" -o "${M2_ARCHIVE_PATH}" || _die "Download failed."
+        else
+            wget --no-check-certificate --secure-protocol=TLSv1_2 "$SOURCE_PATH" -O "${M2_ARCHIVE_PATH}" || _die "Download failed."
+        fi
         # save for future reference @todo
     else
         _note " Skipped downloading(${M2_ARCHIVE_FILE} already exists)"
@@ -612,7 +641,7 @@ function tarInstall()
     rm -rf "magento2-${M2_VERSION}"/
 
     _arrow "Running Composer..."
-    composer install || _die "'composer install' command failed."
+    "$BIN_COMPOSER" install || _die "'composer install' command failed."
 
     installMagento
 
@@ -625,9 +654,9 @@ function tarInstall()
 
 function createDbIfNotExists()
 {
-    if ! mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "USE ${DB_NAME}"; then
+    if ! "$BIN_MYSQL" -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "USE ${DB_NAME}"; then
         _arrow "Creating database ${DB_NAME}..."
-        mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME}" || _die "Couldn't create database: ${DB_NAME}."
+        "$BIN_MYSQL" -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME}" || _die "Couldn't create database: ${DB_NAME}."
     else
         _arrow "Skipping: database ${DB_NAME} already exists..."
     fi
@@ -636,7 +665,7 @@ function createDbIfNotExists()
 function dropDb()
 {
     _arrow "Dropping database ${DB_NAME}..."
-    mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "DROP DATABASE IF EXISTS $DB_NAME" || _die "Couldn't drop database: ${DB_NAME}."
+    "$BIN_MYSQL" -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "DROP DATABASE IF EXISTS $DB_NAME" || _die "Couldn't drop database: ${DB_NAME}."
 }
 
 function initUserInputWizard()
@@ -730,18 +759,18 @@ function installMagento()
     if [[ "$CACHING_TYPE" = "redis" ]]; then
       _installOpts+=(
         "--session-save=redis"
-        "--session-save-redis-host=${REDIS_HOST}"
-        "--session-save-redis-port=${REDIS_PORT}"
+        "--session-save-redis-host=${REDIS_SESSION_HOST}"
+        "--session-save-redis-port=${REDIS_SESSION_PORT}"
         "--session-save-redis-db=2"
         "--session-save-redis-max-concurrency=20"
         "--cache-backend=redis"
-        "--cache-backend-redis-server=${REDIS_HOST}"
+        "--cache-backend-redis-server=${REDIS_DEFAULT_HOST}"
         "--cache-backend-redis-db=0"
-        "--cache-backend-redis-port=${REDIS_PORT}"
+        "--cache-backend-redis-port=${REDIS_DEFAULT_PORT}"
         "--page-cache=redis"
-        "--page-cache-redis-server=${REDIS_HOST}"
+        "--page-cache-redis-server=${REDIS_FULLPAGE_HOST}"
         "--page-cache-redis-db=1"
-        "--page-cache-redis-port=${REDIS_PORT}"
+        "--page-cache-redis-port=${REDIS_FULLPAGE_PORT}"
       )
     else
       "--session-save=${SESSION_SAVE}"
@@ -755,7 +784,7 @@ function installMagento()
       )
     fi
 
-    php -d memory_limit=-1 ./bin/magento setup:install "${_installOpts[@]}"
+    "$BIN_PHP" -d memory_limit=-1 ./bin/magento setup:install "${_installOpts[@]}"
 }
 
 function loadConfigFile()
@@ -782,14 +811,14 @@ function installSampleData()
         fi
     fi
 
-    composer config repositories.magento composer https://repo.magento.com
+    "$BIN_COMPOSER" config repositories.magento composer https://repo.magento.com
 
-    php -d memory_limit=-1 ./bin/magento sampledata:deploy
+    "$BIN_PHP" -d memory_limit=-1 ./bin/magento sampledata:deploy
 
     # Run in case of Authentication error
     ###composer update
 
-    php -d memory_limit=-1 ./bin/magento setup:upgrade
+    "$BIN_PHP" -d memory_limit=-1 ./bin/magento setup:upgrade
 }
 
 function beforeInstall()
@@ -804,12 +833,12 @@ function afterInstall()
 {
     if [[ "$M2_SETUP_MODE" = 'developer' ]]; then
         _arrow "Setting developer mode..."
-        php ./bin/magento deploy:mode:set developer
+        "$BIN_PHP" ./bin/magento deploy:mode:set developer
     fi
 
     if [[ "$M2_SETUP_MODE" = 'production' ]]; then
         _arrow "Setting production mode..."
-        php ./bin/magento deploy:mode:set production
+        "$BIN_PHP" ./bin/magento deploy:mode:set production
     fi
     setFilesystemPermission
 }
@@ -833,7 +862,9 @@ function setFilesystemPermission()
 
     # @todo handle for multiple OS
     if ! _isOs 'darwin'; then
-        sudo chown -R www-data:www-data ./ || _die "Couldn't change ownership of files."
+        if [[ $(whoami) != 'www-data' ]]; then
+            sudo chown -R www-data:www-data ./ || _die "Couldn't change ownership of files."
+        fi
     fi
 }
 
@@ -847,11 +878,10 @@ function verifyCurrentDirIsMage2Root()
 function checkCmdDependencies()
 {
     local _dependencies=(
-        php
-        composer
+        "$BIN_PHP"
+        "$BIN_COMPOSER"
         mysql
         git
-        wget
         cat
         basename
         tar
@@ -914,9 +944,13 @@ export LANG=C
 
 DEBUG=0
 _debug set -x
-VERSION="0.1.3"
+VERSION="0.1.4"
 
 # Defaults
+BIN_COMPOSER="composer"
+BIN_MYSQL="mysql"
+BIN_PHP="php"
+PROJECT_NAME=$(basename "$(pwd)")
 CURRENT_DIR=$(basename "$(pwd)")
 INSTALL_DIR=$(pwd)
 DOWNLOAD_DIR=/tmp
@@ -955,6 +989,13 @@ ELASTICSEARCH_INDEX_PREFIX='magento2'
 # Redis
 REDIS_HOST='127.0.0.1'
 REDIS_PORT=6379
+REDIS_PREFIX="${PROJECT_NAME}_"
+REDIS_SESSION_HOST="$REDIS_HOST"
+REDIS_SESSION_PORT="$REDIS_PORT"
+REDIS_DEFAULT_HOST="$REDIS_HOST"
+REDIS_DEFAULT_PORT="$REDIS_PORT"
+REDIS_FULLPAGE_HOST="$REDIS_HOST"
+REDIS_FULLPAGE_PORT="$REDIS_PORT"
 
 USE_SECURE=0
 
@@ -962,11 +1003,11 @@ FORCE=0
 
 function main()
 {
-    checkCmdDependencies
-
     [[ $# -lt 1 ]] && _printUsage
 
     loadConfigFile
+
+    checkCmdDependencies
 
     processArgs "$@"
 
