@@ -406,6 +406,12 @@ function processArgs()
             --timezone=*)
                 TIMEZONE="${arg#*=}"
             ;;
+            --bin-composer=*)
+                BIN_COMPOSER="${arg#*=}"
+            ;;
+            --bin-php=*)
+                BIN_PHP="${arg#*=}"
+            ;;
             --use-secure)
                 USE_SECURE=1
             ;;
