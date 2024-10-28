@@ -779,7 +779,9 @@ function installMagento()
         "--page-cache-redis-port=${REDIS_FULLPAGE_PORT}"
       )
     else
-      "--session-save=${SESSION_SAVE}"
+      _installOpts+=(
+        "--session-save=${SESSION_SAVE}"
+      )
     fi
 
     if [[ "$USE_SECURE" -eq 1 ]]; then
