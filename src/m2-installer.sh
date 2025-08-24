@@ -5,7 +5,7 @@
 #
 # @author   Raj KB <magepsycho@gmail.com>
 # @website  https://www.magepsycho.com
-# @version  0.1.3
+# @version  0.1.5
 
 # Exit on error. Append "|| true" if you expect an error.
 #set -o errexit
@@ -179,12 +179,20 @@ function _checkRootUser()
 }
 
 function _semVerToInt() {
-  local _semVer
+  local _semVer major minor patch
   _semVer="${1:?No version number supplied}"
-  _semVer="${_semVer//[^0-9.]/}"
-  # shellcheck disable=SC2086
-  set -- ${_semVer//./ }
-  printf -- '%d%02d%02d' "${1}" "${2:-0}" "${3:-0}"
+
+  # strip any suffix like -p1, -p2, -2, -beta, etc
+  _semVer="${_semVer%%-*}"
+
+  # split into parts
+  IFS=. read -r major minor patch <<< "$_semVer"
+
+  # default patch to 0 if missing
+  patch=${patch:-0}
+
+  # return as minor*100 + patch
+  echo $((10#${minor} * 100 + 10#${patch}))
 }
 
 function _selfUpdate()
@@ -350,6 +358,15 @@ function processArgs()
             ;;
             --elasticsearch-index=*)
                 ELASTICSEARCH_INDEX_PREFIX="${arg#*=}"
+            ;;
+            --opensearch-host=*)
+                OPENSEARCH_HOST="${arg#*=}"
+            ;;
+            --opensearch-port=*)
+                OPENSEARCH_PORT="${arg#*=}"
+            ;;
+            --opensearch-index=*)
+                OPENSEARCH_INDEX_PREFIX="${arg#*=}"
             ;;
             --backend-frontName=*)
                 BACKEND_FRONTNAME="${arg#*=}"
@@ -751,7 +768,8 @@ function installMagento()
     )
 
     # Configure Elasticsearch
-    if [[ "$(_semVerToInt ${M2_VERSION})" -ge 240 ]]; then
+    if [[ "$(_semVerToInt "${M2_VERSION}")" -ge 240 && "$(_semVerToInt "${M2_VERSION}")" -lt 248 ]]; then
+    ##if [[ "$(_semVerToInt ${M2_VERSION})" -ge 240 ]]; then
       _installOpts+=(
         "--search-engine=${SEARCH_ENGINE}"
         "--elasticsearch-host=${ELASTICSEARCH_HOST}"
@@ -761,6 +779,17 @@ function installMagento()
         "--elasticsearch-timeout=15"
       )
     fi
+
+    if [[ "$(_semVerToInt ${M2_VERSION})" -ge 248 ]]; then
+        _installOpts+=(
+          "--search-engine=${SEARCH_ENGINE}"
+          "--opensearch-host=${OPENSEARCH_HOST}"
+          "--opensearch-port=${OPENSEARCH_PORT}"
+          "--opensearch-index-prefix=${OPENSEARCH_INDEX_PREFIX}"
+          "--opensearch-enable-auth=0"
+          "--opensearch-timeout=15"
+        )
+      fi
 
     if [[ "$CACHING_TYPE" = "redis" ]]; then
       _installOpts+=(
@@ -952,7 +981,7 @@ export LANG=C
 
 DEBUG=0
 _debug set -x
-VERSION="0.1.4"
+VERSION="0.1.5"
 
 # Defaults
 BIN_COMPOSER="composer"
@@ -988,11 +1017,19 @@ ADMIN_EMAIL='admin@example.com'
 ADMIN_USER='admin'
 ADMIN_PASSWORD=$(genRandomPassword)
 
-# Elasticsearch
 SEARCH_ENGINE='elasticsearch7'
+
+# Elasticsearch
+#SEARCH_ENGINE='elasticsearch7'
 ELASTICSEARCH_HOST='127.0.0.1'
 ELASTICSEARCH_PORT=9200
 ELASTICSEARCH_INDEX_PREFIX='magento2'
+
+# Opensearch
+#SEARCH_ENGINE='opensearch'
+OPENSEARCH_HOST='127.0.0.1'
+OPENSEARCH_PORT=9200
+OPENSEARCH_INDEX_PREFIX='magento2'
 
 # Redis
 REDIS_HOST='127.0.0.1'

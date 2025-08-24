@@ -1,191 +1,186 @@
-# Simplistic Magento 2 Installer
+# 🚀 Simplistic Magento 2 Installer
 
-This bash script helps you to quickly install Magento2 from different sources (`tar`, `composer` etc.) with sample data for development purpose.
+This **bash script** helps you quickly install **Magento 2** from different sources (`tar`, `composer`, etc.) with optional sample data — perfect for development setups.
 
-## INSTALL
-You can simply download the script file and give the executable permission.
-```
-curl -0 https://raw.githubusercontent.com/MagePsycho/magento2-installer-bash-script/master/src/m2-installer.sh -o m2-installer.sh
+---
+
+## 📥 Installation
+
+Download the script and make it executable:
+
+```bash
+curl -O https://raw.githubusercontent.com/MagePsycho/magento2-installer-bash-script/master/src/m2-installer.sh
 chmod +x m2-installer.sh
 ```
 
-To make it a system-wide command (preferred)
-```
+To make it a system-wide command (preferred):
+
+```bash
 sudo mv m2-installer.sh /usr/local/bin/m2-installer
 ```
-OR
-```
+
+Or for user scope:
+
+```bash
 mv m2-installer.sh ~/bin/m2-installer
 ```
-*Make sure your `$HOME/bin` folder is in executable path*
 
-## USAGE
-### To display help
-```
+> ⚠️ Make sure your `$HOME/bin` folder is in your `$PATH`.
+
+---
+
+## 🛠 Usage
+
+### Show help
+```bash
 m2-installer --help
 ```
 
 ![Magento 2 Installer Help](https://github.com/MagePsycho/magento2-installer-bash-script/raw/master/docs/magento2-installer-bash-script-help-v0.1.3.png "Magento2 Installer Help")
 
-### To install Magento CE v2.4.6 (with sample data)
-```
-m2-installer --version=2.4.6 --base-url=magento246.test --install-sample-data --db-user=root --db-pass=pass --db-name=magento246
-```
-- `--install-sample-data` option is required to install the sample data.
+---
 
-If you want to install via `composer`, you can simply use `--source=composer` option:
-```
-m2-installer --source=composer --version=2.4.6 --base-url=magento246.test --install-sample-data --db-user=root --db-pass=pass --db-name=magento246
-```
-*If `--source` option is not passed, default `tar` source is used for downloading.*
+### Install Magento CE 2.4.8 (with sample data)
 
-**Notes**  
-*Since `elasticsearch` is the default search engine since `v2.4.0` onwards. Make sure to install it prior to M2 installation*  
+```bash
+m2-installer --version=2.4.8 --base-url=magento248.test   --install-sample-data --db-user=root --db-pass=pass --db-name=magento248
+```
 
-You can explicitly pass `elasticsearch` params as
+> `--install-sample-data` is required to include sample data.
+
+Install via Composer:
+
+```bash
+m2-installer --source=composer --version=2.4.8 --base-url=magento248.test   --install-sample-data --db-user=root --db-pass=pass --db-name=magento248
+```
+
+*If `--source` is not passed, `tar` is used by default.*
+
+---
+
+## 🔍 Search Engine Configuration
+
+Magento >= 2.4.0 defaults to **Elasticsearch**, and >= 2.4.8 prefers **OpenSearch**.  
+Make sure you have the right service installed before running the installer.
+
+### Elasticsearch options
 - `--search-engine` (default: `elasticsearch7`)
 - `--elasticsearch-host` (default: `127.0.0.1`)
 - `--elasticsearch-port` (default: `9200`)
 - `--elasticsearch-index` (default: `magento2`)
 
-Usage example:
-```
-m2-installer --version=2.4.6 --base-url=magento246.test --db-user=root --db-pass=pass --db-name=magento246 --search-engine=elasticsearch7 --elasticsearch-host=127.0.0.1
+### OpenSearch options
+- `--search-engine` (default: `opensearch`)
+- `--opensearch-host` (default: `127.0.0.1`)
+- `--opensearch-port` (default: `9200`)
+- `--opensearch-index` (default: `magento2`)
+
+**Examples:**
+```bash
+m2-installer --version=2.4.7 --base-url=magento247.test   --db-user=root --db-pass=pass --db-name=magento247   --search-engine=elasticsearch7 --elasticsearch-host=127.0.0.1
 ```
 
-### To install Magento CE 2.4.6 (without sample data)
-```
-m2-installer --version=2.4.6 --base-url=magento246.test --db-user=root --db-pass=pass --db-name=magento246
+```bash
+m2-installer --version=2.4.8 --base-url=magento248.test   --db-user=root --db-pass=pass --db-name=magento248   --search-engine=opensearch --opensearch-host=127.0.0.1
 ```
 
-### To install Magento with Redis Caching
-If you want to use `redis` as session storage, frontend and full-page caching, you have to use the following params:
+---
+
+## ⚡ Redis Caching Support
+
+To use `redis` for sessions, frontend, and full-page cache:
+
 - `--use-redis-cache` (required)
-- `--redis-host` (optional, default: `127.0.0.1`)
-- `--redis-port` (optional, default: `6379`)
+- `--redis-host` (default: `127.0.0.1`)
+- `--redis-port` (default: `6379`)
 
-Usage example:
-```
-m2-installer --version=2.4.6 --base-url=magento246.test --db-user=root --db-pass=pass --db-name=magento246 --use-redis-cache
-m2-installer --version=2.4.6 --base-url=magento246.test --db-user=root --db-pass=pass --db-name=magento246 --use-redis-cache --redis-host=127.0.0.1 --redis-port=6379
-# using different hosts for session/full page caching
-m2-installer --version=2.4.6 --base-url=magento246.test --db-user=root --db-pass=pass --db-name=magento246 --use-redis-cache --redis-session-host=127.0.0.1 --redis-default-host=127.0.0.1 --redis-fullpage-host=127.0.0.1
+**Example:**
+```bash
+m2-installer --version=2.4.8 --base-url=magento248.test   --db-user=root --db-pass=pass --db-name=magento248 --use-redis-cache
 ```
 
-### Use of `--force` option
-Use `--force` option, if you want to
-- Skip the installation wizard/confirmation
-- Clean up the directory prior installation
+---
 
-Usage example:
-```
-m2-installer --version=2.4.6 --base-url=magento246.test --db-user=root --db-pass=pass --db-name=magento246 --force
-```
+## 🔄 Force Install
 
-### Use of config files 
-If you repeatedly install Magento on your development machine, it is recommended to use the config file in one of the following locations:
-1. `~/.m2-installer.conf` - `$HOME` directory (*global scope*)
-1. `./.m2-installer.conf` - project directory (*local/project scope*)
+Skip confirmation prompts and clean the directory before installation:
 
-*You can copy the sample config provided in the repo `.m2-installer.conf.dist` to the desired location*
-```
-curl -0 https://raw.githubusercontent.com/MagePsycho/magento2-installer-bash-script/master/.m2-installer.conf.dist -o .m2-installer.conf
-
-# cp .m2-installer.conf.dist ~/.m2-installer.conf
-# OR
-# cp .m2-installer.conf.dist ./.m2-installer.conf
+```bash
+m2-installer --version=2.4.8 --base-url=magento248.test   --db-user=root --db-pass=pass --db-name=magento248 --force
 ```
 
-And edit `.m2-installer.conf` config file as
-```
-# Binary Settings
-BIN_COMPOSER="composer"
-BIN_PHP="php"
+---
 
-# Web Settings
-#PROJECT_NAME=
-USE_SECURE=1
-LANGUAGE='en_US'
-CURRENCY='USD'
-TIMEZONE='America/Chicago'
+## ⚙️ Config Files
 
-# Storage Settings
-# files|redis
-SESSION_SAVE='redis'
-CACHING_TYPE=redis
+Instead of passing flags every time, you can use a config file:
 
-# Admin Settings
-BACKEND_FRONTNAME="backend"
-ADMIN_FIRSTNAME='John'
-ADMIN_LASTNAME='Doe'
-ADMIN_EMAIL='admin@example.com'
-ADMIN_USER='admin'
-ADMIN_PASSWORD=$(genRandomPassword)
+1. **Global:** `~/.m2-installer.conf`
+2. **Local/project:** `./.m2-installer.conf`
 
-# DB Settings
-DB_HOST=localhost
-DB_NAME="${PROJECT_NAME}"
-DB_USER=root
-DB_PASS=root
-
-# Elasticsearch
-SEARCH_ENGINE='elasticsearch7'
-ELASTICSEARCH_HOST='127.0.0.1'
-ELASTICSEARCH_PORT=9200
-ELASTICSEARCH_INDEX_PREFIX="${PROJECT_NAME}_"
-
-# Redis
-REDIS_HOST='127.0.0.1'
-REDIS_PORT=6379
-#REDIS_PREFIX="${PROJECT_NAME}_"
-REDIS_SESSION_HOST="$REDIS_HOST"
-REDIS_SESSION_PORT="$REDIS_PORT"
-REDIS_DEFAULT_HOST="$REDIS_HOST"
-REDIS_DEFAULT_PORT="$REDIS_PORT"
-REDIS_FULLPAGE_HOST="$REDIS_HOST"
-REDIS_FULLPAGE_PORT="$REDIS_PORT"
+Copy the sample config:
+```bash
+curl -O https://raw.githubusercontent.com/MagePsycho/magento2-installer-bash-script/master/.m2-installer.conf.dist
+cp .m2-installer.conf.dist ~/.m2-installer.conf
 ```
 
-Now you can install Magento 2 simply as:
-```
-./m2-installer.sh --version=2.4.6 --base-url=magento246.test --use-secure --force
+Edit to set defaults like DB credentials, search engine, Redis, etc.
+
+Then run simply:
+```bash
+m2-installer --version=2.4.8 --base-url=magento248.test --use-secure --force
 ```
 
-### To update the script
-```
+---
+
+## 🔧 Updating the Script
+
+```bash
 m2-installer --self-update
 ```
-*Note: This option will only work for version > 0.1.2*
 
-### BONUS 1
-You can use this script to quickly install the Magento in your beloved [warden](https://github.com/davidalger/warden) environment
-```
+> Works for version `> 0.1.2`
+
+---
+
+## 🎁 Bonus
+
+### 1. Use with [Warden](https://github.com/davidalger/warden)
+```bash
 cd /path/to/warden/m2/project
 warden shell
 ```
-After login to the container, you can download the script (as mentioned above) and install Magento as
-```
-# With sample data
-m2-installer --version=2.4.6 --install-sample-data --use-secure --base-url=app.<project>.test --db-host=<project>_db_1 --db-user=magento --db-pass=magento --db-name=magento --elasticsearch-host=<project>_elasticsearch_1 --use-redis-cache --redis-host=<project>_redis_1 --force
 
-# Without sample data
-m2-installer --version=2.4.6 --use-secure --base-url=app.<project>.test --db-host=<project>_db_1 --db-user=magento --db-pass=magento --db-name=magento --elasticsearch-host=<project>_elasticsearch_1 --use-redis-cache --redis-host=<project>_redis_1 --force
+Inside the container:
+
+```bash
+m2-installer --version=2.4.8 --install-sample-data --use-secure   --base-url=app.<project>.test --db-host=<project>_db_1   --db-user=magento --db-pass=magento --db-name=magento   --elasticsearch-host=<project>_elasticsearch_1 --use-redis-cache   --redis-host=<project>_redis_1 --force
 ```
 
-## BONUS 2
-After installation, you can create virtual host with this FREE bash script - 
-https://github.com/MagePsycho/nginx-virtual-host-bash-script
-```
-sudo vhost-nginx --domain=magento246.test --app=magento2
+### 2. Create a Virtual Host
+
+Use this free bash script: [nginx-virtual-host-bash-script](https://github.com/MagePsycho/nginx-virtual-host-bash-script)
+
+```bash
+sudo vhost-nginx --domain=magento248.test --app=magento2
 ```
 
-## RoadMap
- - [X] Support of installation parameters via config files (`~/.m2-installer.conf` or `./.m2-installer.conf`)
- - [ ] Support multiple compression types (`.gz`, `.zip`, `.tar.bz2`)
- - [ ] Option to install Magento 2 Enterprise Edition
- - [X] Option to install via composer
- - [ ] Option to install via git clone
- - [ ] Option to check system readiness (PHP & it's extensions, MySQL, Nginx/Apache)
- - [X] Option to create virtual host (nginx)
- - [ ] Option to create crontab settings
- - [ ] Option to migrate with local codebase + database
+---
+
+## 🗺️ Roadmap
+
+- [X] Config files support (`~/.m2-installer.conf` or `./.m2-installer.conf`)
+- [X] Install via Composer
+- [X] Create virtual host (nginx)
+- [ ] Multiple compression types (`.gz`, `.zip`, `.tar.bz2`)
+- [ ] Install Magento 2 EE
+- [ ] Install via Git clone
+- [ ] System readiness checks (PHP, MySQL, Nginx/Apache, etc.)
+- [ ] Crontab setup
+- [ ] Migration with local codebase + DB
+
+---
+
+## 🙌 Credits
+Developed & maintained by **[MagePsycho](https://www.magepsycho.com)**  
+Licensed under [OSL 3.0](http://opensource.org/licenses/osl-3.0.php)
