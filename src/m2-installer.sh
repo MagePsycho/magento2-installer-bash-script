@@ -592,14 +592,14 @@ function composerInstall()
         _warning "Target dir is not empty. Using temp dir for create-project..."
         TMPDIR=$(mktemp -d /tmp/m2create.XXXXXX) || _die "mktemp failed"
         "$BIN_COMPOSER" create-project --repository=https://repo.magento.com/ \
-            magento/project-community-edition:"${M2_VERSION}" "$TMPDIR" \
+            magento/project-community-edition:"${M2_VERSION}" --no-dev --prefer-dist "$TMPDIR" \
             || _die "'composer create-project' failed."
 
         rsync -a "$TMPDIR"/ "$INSTALL_DIR"/ || _die "rsync into $INSTALL_DIR failed."
         rm -rf "$TMPDIR"
     else
         "$BIN_COMPOSER" create-project --repository=https://repo.magento.com/ \
-            magento/project-community-edition:"${M2_VERSION}" . \
+            magento/project-community-edition:"${M2_VERSION}" --no-dev --prefer-dist . \
             || _die "'composer create-project' failed."
     fi
 
