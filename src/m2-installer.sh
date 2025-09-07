@@ -179,20 +179,17 @@ function _checkRootUser()
 }
 
 function _semVerToInt() {
-  local _semVer major minor patch
-  _semVer="${1:?No version number supplied}"
+  local ver major minor patch
+  ver="${1:?No version number supplied}"
 
-  # strip any suffix like -p1, -p2, -2, -beta, etc
-  _semVer="${_semVer%%-*}"
+  ver="${ver%%-*}"          # strip suffix like -p3
+  IFS=. read -r major minor patch _ <<< "$ver"
 
-  # split into parts
-  IFS=. read -r major minor patch <<< "$_semVer"
+  major=${major:-0}; minor=${minor:-0}; patch=${patch:-0}
+  major=$((10#$major)); minor=$((10#$minor)); patch=$((10#$patch))
 
-  # default patch to 0 if missing
-  patch=${patch:-0}
-
-  # return as minor*100 + patch
-  echo $((10#${minor} * 100 + 10#${patch}))
+  # Encode as M*100 + m*10 + p  →  2.4.5 -> 245
+  echo $(( major*100 + minor*10 + patch ))
 }
 
 function _selfUpdate()
