@@ -678,7 +678,7 @@ function tarInstall()
     rm -rf "magento2-${M2_VERSION}"/
 
     _arrow "Running Composer..."
-    "$BIN_COMPOSER" install || _die "'composer install' command failed."
+    "$BIN_COMPOSER" install --no-dev --optimize-autoloader --no-interaction || _die "'composer install' command failed."
 
     installMagento
 
