@@ -581,17 +581,33 @@ function composerInstall()
     mkdir -p "$INSTALL_DIR"
     cd "$INSTALL_DIR" || _die "Couldn't change directory to : ${INSTALL_DIR}."
 
-    "$BIN_COMPOSER" create-project --repository=https://repo.magento.com/ magento/project-community-edition:"${M2_VERSION}" .
-    #composer create-project --repository=https://repo.magento.com/ magento/project-enterprise-edition:"${M2_VERSION}" .
+    # If --force, wipe contents (not the directory itself)
+    if [[ "$FORCE" -eq 1 ]]; then
+        _arrow "Cleaning up the installation directory (FORCE=1)..."
+        find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+    fi
+
+    # If still not empty, use a temp directory and then rsync into place
+    if [ -n "$(ls -A "$INSTALL_DIR")" ]; then
+        _warning "Target dir is not empty. Using temp dir for create-project..."
+        TMPDIR=$(mktemp -d /tmp/m2create.XXXXXX) || _die "mktemp failed"
+        "$BIN_COMPOSER" create-project --repository=https://repo.magento.com/ \
+            magento/project-community-edition:"${M2_VERSION}" "$TMPDIR" \
+            || _die "'composer create-project' failed."
+
+        rsync -a "$TMPDIR"/ "$INSTALL_DIR"/ || _die "rsync into $INSTALL_DIR failed."
+        rm -rf "$TMPDIR"
+    else
+        "$BIN_COMPOSER" create-project --repository=https://repo.magento.com/ \
+            magento/project-community-edition:"${M2_VERSION}" . \
+            || _die "'composer create-project' failed."
+    fi
 
     if [[ ! -f ./nginx.conf ]]; then
         cp ./nginx.conf.sample ./nginx.conf
     fi
-    verifyCurrentDirIsMage2Root
 
     beforeInstall
-
-    # if db already exists, throws SQL error
     createDbIfNotExists
     setFilesystemPermission
     installMagento
@@ -602,6 +618,7 @@ function composerInstall()
 
     afterInstall
 }
+
 
 function tarInstall()
 {
