@@ -645,6 +645,8 @@ function composerInstall()
         fi
         if [[ $_rsyncStatus -eq 23 ]]; then
             _warning "Some files could not be synced (e.g. Docker volume mount points). This is usually safe to ignore."
+            # Recreate any missing critical directories
+            mkdir -p "$INSTALL_DIR/pub/media" "$INSTALL_DIR/pub/static" "$INSTALL_DIR/var" "$INSTALL_DIR/generated" 2>/dev/null || true
         fi
         rm -rf "$TMPDIR"
     else
@@ -991,6 +993,11 @@ function setFilesystemPermission()
     ## @todo find approach
     #find ./var ./pub/static ./pub/media ./app/etc -type f -exec chmod g+w {} \;
     #find ./var ./pub/static ./pub/media ./app/etc -type d -exec chmod g+ws {} \;
+
+    # Ensure writable directories exist (may be missing due to Docker volume mount issues)
+    for _dir in ./var ./pub/static ./pub/media ./app/etc ./generated; do
+        [[ ! -d "$_dir" ]] && mkdir -p "$_dir"
+    done
 
     chmod -R 777 ./var ./pub/static ./pub/media ./app/etc || _die "Unable to execute writable permission on files (./var ./pub/static ./pub/media ./app/etc)."
 
