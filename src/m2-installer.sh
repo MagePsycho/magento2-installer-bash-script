@@ -637,7 +637,15 @@ function composerInstall()
             magento/project-community-edition:"${M2_VERSION}" --no-dev --prefer-dist "$TMPDIR" \
             || _die "'composer create-project' failed."
 
-        rsync -a "$TMPDIR"/ "$INSTALL_DIR"/ || _die "rsync into $INSTALL_DIR failed."
+        rsync -a "$TMPDIR"/ "$INSTALL_DIR"/
+        _rsyncStatus=$?
+        if [[ $_rsyncStatus -ne 0 && $_rsyncStatus -ne 23 ]]; then
+            rm -rf "$TMPDIR"
+            _die "rsync into $INSTALL_DIR failed."
+        fi
+        if [[ $_rsyncStatus -eq 23 ]]; then
+            _warning "Some files could not be synced (e.g. Docker volume mount points). This is usually safe to ignore."
+        fi
         rm -rf "$TMPDIR"
     else
         "$BIN_COMPOSER" create-project --repository=https://repo.magento.com/ \
