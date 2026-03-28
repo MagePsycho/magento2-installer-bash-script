@@ -455,6 +455,7 @@ function processArgs()
     validateArgs
     sanitizeArgs
     applyRedisDefaults
+    applySearchEngineDefaults
 }
 
 function validateArgs()
@@ -552,6 +553,21 @@ function applyRedisDefaults()
     [[ -z "$REDIS_DEFAULT_PORT" ]] && REDIS_DEFAULT_PORT="$REDIS_PORT"
     [[ -z "$REDIS_FULLPAGE_HOST" ]] && REDIS_FULLPAGE_HOST="$REDIS_HOST"
     [[ -z "$REDIS_FULLPAGE_PORT" ]] && REDIS_FULLPAGE_PORT="$REDIS_PORT"
+}
+
+function applySearchEngineDefaults()
+{
+    # For 2.4.8+: map elasticsearch args to opensearch if opensearch args were not explicitly set
+    if [[ "$(_semVerToInt "${M2_VERSION}")" -ge 248 ]]; then
+        [[ "$OPENSEARCH_HOST" = "127.0.0.1" && "$ELASTICSEARCH_HOST" != "127.0.0.1" ]] && OPENSEARCH_HOST="$ELASTICSEARCH_HOST"
+        [[ "$OPENSEARCH_PORT" = "9200" && "$ELASTICSEARCH_PORT" != "9200" ]] && OPENSEARCH_PORT="$ELASTICSEARCH_PORT"
+        [[ "$OPENSEARCH_INDEX_PREFIX" = "magento2" && "$ELASTICSEARCH_INDEX_PREFIX" != "magento2" ]] && OPENSEARCH_INDEX_PREFIX="$ELASTICSEARCH_INDEX_PREFIX"
+    # For <2.4.8: map opensearch args to elasticsearch if elasticsearch args were not explicitly set
+    elif [[ "$(_semVerToInt "${M2_VERSION}")" -ge 240 ]]; then
+        [[ "$ELASTICSEARCH_HOST" = "127.0.0.1" && "$OPENSEARCH_HOST" != "127.0.0.1" ]] && ELASTICSEARCH_HOST="$OPENSEARCH_HOST"
+        [[ "$ELASTICSEARCH_PORT" = "9200" && "$OPENSEARCH_PORT" != "9200" ]] && ELASTICSEARCH_PORT="$OPENSEARCH_PORT"
+        [[ "$ELASTICSEARCH_INDEX_PREFIX" = "magento2" && "$OPENSEARCH_INDEX_PREFIX" != "magento2" ]] && ELASTICSEARCH_INDEX_PREFIX="$OPENSEARCH_INDEX_PREFIX"
+    fi
 }
 
 function prepareDownloadDir()
@@ -786,6 +802,7 @@ function initUserInputWizard()
     fi
 
     applyRedisDefaults
+    applySearchEngineDefaults
 }
 
 function installMagento()
@@ -912,8 +929,30 @@ function beforeInstall()
     fi
 }
 
+function configureSearchEngine()
+{
+    _arrow "Persisting search engine config in env.php..."
+    if [[ "$(_semVerToInt "${M2_VERSION}")" -ge 248 ]]; then
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/engine "${SEARCH_ENGINE}"
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/opensearch_server_hostname "${OPENSEARCH_HOST}"
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/opensearch_server_port "${OPENSEARCH_PORT}"
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/opensearch_index_prefix "${OPENSEARCH_INDEX_PREFIX}"
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/opensearch_enable_auth 0
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/opensearch_server_timeout 15
+    elif [[ "$(_semVerToInt "${M2_VERSION}")" -ge 240 ]]; then
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/engine "${SEARCH_ENGINE}"
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/elasticsearch7_server_hostname "${ELASTICSEARCH_HOST}"
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/elasticsearch7_server_port "${ELASTICSEARCH_PORT}"
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/elasticsearch7_index_prefix "${ELASTICSEARCH_INDEX_PREFIX}"
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/elasticsearch7_enable_auth 0
+        "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/elasticsearch7_server_timeout 15
+    fi
+}
+
 function afterInstall()
 {
+    configureSearchEngine
+
     if [[ "$M2_SETUP_MODE" = 'developer' ]]; then
         _arrow "Setting developer mode..."
         "$BIN_PHP" ./bin/magento deploy:mode:set developer
