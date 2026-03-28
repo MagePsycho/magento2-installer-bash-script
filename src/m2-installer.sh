@@ -618,11 +618,18 @@ function composerInstall()
     # If --force, wipe contents (not the directory itself)
     if [[ "$FORCE" -eq 1 ]]; then
         _arrow "Cleaning up the installation directory (FORCE=1)..."
-        # Use || true to handle unmovable mount points (e.g. Docker volumes)
-        find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+        # Remove top-level files and symlinks
+        find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 -type f -delete 2>/dev/null || true
+        find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 -type l -delete 2>/dev/null || true
+        # Clean contents of subdirectories (preserves Docker volume mount points)
+        for _topdir in "$INSTALL_DIR"/*/; do
+            [[ -d "$_topdir" ]] && find "$_topdir" -mindepth 1 -delete 2>/dev/null || true
+        done
+        # Remove empty top-level directories (mount-point dirs will survive)
+        find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 -type d -exec rmdir {} + 2>/dev/null || true
     fi
 
-    # If still not empty, use a temp directory and then rsync into place
+    # If still not empty (e.g. Docker mount points survived), use temp dir + rsync
     if [ -n "$(ls -A "$INSTALL_DIR")" ]; then
         _warning "Target dir is not empty. Using temp dir for create-project..."
         TMPDIR=$(mktemp -d /tmp/m2create.XXXXXX) || _die "mktemp failed"
@@ -630,10 +637,6 @@ function composerInstall()
             magento/project-community-edition:"${M2_VERSION}" --no-dev --prefer-dist "$TMPDIR" \
             || _die "'composer create-project' failed."
 
-        # Recreate directory structure before rsync (handles removed Docker volume mount points)
-        while IFS= read -r _dir; do
-            mkdir -p "$INSTALL_DIR/$_dir"
-        done < <(cd "$TMPDIR" && find . -mindepth 1 -type d)
         rsync -a "$TMPDIR"/ "$INSTALL_DIR"/ || _die "rsync into $INSTALL_DIR failed."
         rm -rf "$TMPDIR"
     else
