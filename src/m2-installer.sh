@@ -630,10 +630,10 @@ function composerInstall()
             magento/project-community-edition:"${M2_VERSION}" --no-dev --prefer-dist "$TMPDIR" \
             || _die "'composer create-project' failed."
 
-        # Ensure target subdirectories exist before rsync (e.g. Docker volume mount points)
-        (cd "$TMPDIR" && find . -mindepth 1 -type d) | while read -r _dir; do
+        # Recreate directory structure before rsync (handles removed Docker volume mount points)
+        while IFS= read -r _dir; do
             mkdir -p "$INSTALL_DIR/$_dir"
-        done
+        done < <(cd "$TMPDIR" && find . -mindepth 1 -type d)
         rsync -a "$TMPDIR"/ "$INSTALL_DIR"/ || _die "rsync into $INSTALL_DIR failed."
         rm -rf "$TMPDIR"
     else
