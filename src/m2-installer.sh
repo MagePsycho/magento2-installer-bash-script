@@ -5,7 +5,7 @@
 #
 # @author   Raj KB <magepsycho@gmail.com>
 # @website  https://www.magepsycho.com
-# @version  0.1.5
+# @version  0.1.6
 
 # Exit on error. Append "|| true" if you expect an error.
 #set -o errexit
@@ -262,10 +262,13 @@ Version $VERSION
 
         --use-secure                Enable https URLs (Default: disabled)
 
-        --search-engine             Search engine, used for  v2.4.0 or later (Default: elasticsearch7)
+        --search-engine             Search engine (Options: elasticsearch7, opensearch; Default: opensearch)
         --elasticsearch-host        Elasticsearch host (Default: 127.0.0.1)
         --elasticsearch-port        Elasticsearch port (Default: 9200)
         --elasticsearch-index       Elasticsearch index prefix (Default: magento2)
+        --opensearch-host           OpenSearch host (Default: 127.0.0.1)
+        --opensearch-port           OpenSearch port (Default: 9200)
+        --opensearch-index          OpenSearch index prefix (Default: magento2)
 
         --use-redis-cache           Enable Redis cache for session, frontend & full-page (Default: disabled)
         --redis-host                Redis host (Default: 127.0.0.1)
@@ -291,6 +294,7 @@ Version $VERSION
         $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=...
         $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=... --use-redis-cache --redis-host=...
         $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=... --elasticsearch-host=...
+        $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=... --opensearch-host=...
 "
     _printPoweredBy
     exit 1
@@ -512,14 +516,17 @@ function validateArgs()
 function validateUrl()
 {
     if command -v curl >/dev/null 2>&1; then
-        # @todo find appropriate command in `curl`
-        return 0
-    else
-        if [[ `wget -S --no-check-certificate --secure-protocol=TLSv1_2 --spider $1 2>&1 | grep 'HTTP/1.1 200 OK'` ]]; then
-            # 0 = true
+        local _httpCode
+        _httpCode=$(curl -s -o /dev/null -w "%{http_code}" --head -L "$1")
+        if [[ "$_httpCode" =~ ^(200|302)$ ]]; then
             return 0
         else
-            # 1 = false
+            return 1
+        fi
+    else
+        if [[ $(wget -S --no-check-certificate --secure-protocol=TLSv1_2 --spider "$1" 2>&1 | grep 'HTTP/1.1 200 OK') ]]; then
+            return 0
+        else
             return 1
         fi
     fi
@@ -733,7 +740,19 @@ function initUserInputWizard()
     _seekValue "Enter DB Pass" "${DB_PASS}"
     DB_PASS=${READVALUE}
 
-    if [[ "$(_semVerToInt ${M2_VERSION})" -ge 240 ]]; then
+    if [[ "$(_semVerToInt ${M2_VERSION})" -ge 248 ]]; then
+        _seekValue "Enter Search Engine" "${SEARCH_ENGINE}"
+        SEARCH_ENGINE=${READVALUE}
+
+        _seekValue "Enter OpenSearch Host" "${OPENSEARCH_HOST}"
+        OPENSEARCH_HOST=${READVALUE}
+
+        _seekValue "Enter OpenSearch Port" "${OPENSEARCH_PORT}"
+        OPENSEARCH_PORT=${READVALUE}
+
+        _seekValue "Enter OpenSearch Index Prefix" "${OPENSEARCH_INDEX_PREFIX}"
+        OPENSEARCH_INDEX_PREFIX=${READVALUE}
+    elif [[ "$(_semVerToInt ${M2_VERSION})" -ge 240 ]]; then
         _seekValue "Enter Search Engine" "${SEARCH_ENGINE}"
         SEARCH_ENGINE=${READVALUE}
 
@@ -995,7 +1014,7 @@ export LANG=C
 
 DEBUG=0
 _debug set -x
-VERSION="0.1.5"
+VERSION="0.1.6"
 
 # Defaults
 BIN_COMPOSER="composer"
@@ -1009,7 +1028,7 @@ CONFIG_FILE=".m2-installer.conf"
 INSTALL_SOURCE='tar'
 SOURCE_PATH=
 M2_EDITION='community'
-M2_VERSION=2.4.3
+M2_VERSION=2.4.8-p4
 M2_SETUP_MODE=developer
 INSTALL_SAMPLE_DATA=0
 
@@ -1031,7 +1050,7 @@ ADMIN_EMAIL='admin@example.com'
 ADMIN_USER='admin'
 ADMIN_PASSWORD=$(genRandomPassword)
 
-SEARCH_ENGINE='elasticsearch7'
+SEARCH_ENGINE='opensearch'
 
 # Elasticsearch
 #SEARCH_ENGINE='elasticsearch7'
