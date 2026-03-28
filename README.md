@@ -154,8 +154,10 @@ warden shell
 Inside the container:
 
 ```bash
-m2-installer --version=2.4.8 --install-sample-data --use-secure   --base-url=app.<project>.test --db-host=<project>_db_1   --db-user=magento --db-pass=magento --db-name=magento   --elasticsearch-host=<project>_elasticsearch_1 --use-redis-cache   --redis-host=<project>_redis_1 --force
+m2-installer --source=composer --version=2.4.8-p4 --install-sample-data --use-secure   --base-url=app.<project>.test --db-host=db   --db-user=magento --db-pass=magento --db-name=magento   --elasticsearch-host=opensearch --use-redis-cache   --redis-host=valkey --force
 ```
+
+> Warden exposes services by their Docker Compose service names (`db`, `opensearch`, `valkey`) inside the shell — no need to use full container names.
 
 ### 2. Create a Virtual Host
 
