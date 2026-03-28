@@ -454,6 +454,7 @@ function processArgs()
 
     validateArgs
     sanitizeArgs
+    applyRedisDefaults
 }
 
 function validateArgs()
@@ -541,6 +542,16 @@ function sanitizeArgs()
     if [[ "$DOWNLOAD_DIR" ]]; then
         DOWNLOAD_DIR="${DOWNLOAD_DIR%/}"
     fi
+}
+
+function applyRedisDefaults()
+{
+    [[ -z "$REDIS_SESSION_HOST" ]] && REDIS_SESSION_HOST="$REDIS_HOST"
+    [[ -z "$REDIS_SESSION_PORT" ]] && REDIS_SESSION_PORT="$REDIS_PORT"
+    [[ -z "$REDIS_DEFAULT_HOST" ]] && REDIS_DEFAULT_HOST="$REDIS_HOST"
+    [[ -z "$REDIS_DEFAULT_PORT" ]] && REDIS_DEFAULT_PORT="$REDIS_PORT"
+    [[ -z "$REDIS_FULLPAGE_HOST" ]] && REDIS_FULLPAGE_HOST="$REDIS_HOST"
+    [[ -z "$REDIS_FULLPAGE_PORT" ]] && REDIS_FULLPAGE_PORT="$REDIS_PORT"
 }
 
 function prepareDownloadDir()
@@ -773,6 +784,8 @@ function initUserInputWizard()
         _seekValue "Enter Redis Port" "${REDIS_PORT}"
         REDIS_PORT=${READVALUE}
     fi
+
+    applyRedisDefaults
 }
 
 function installMagento()
@@ -1068,12 +1081,12 @@ OPENSEARCH_INDEX_PREFIX='magento2'
 REDIS_HOST='127.0.0.1'
 REDIS_PORT=6379
 REDIS_PREFIX="${PROJECT_NAME}_"
-REDIS_SESSION_HOST="$REDIS_HOST"
-REDIS_SESSION_PORT="$REDIS_PORT"
-REDIS_DEFAULT_HOST="$REDIS_HOST"
-REDIS_DEFAULT_PORT="$REDIS_PORT"
-REDIS_FULLPAGE_HOST="$REDIS_HOST"
-REDIS_FULLPAGE_PORT="$REDIS_PORT"
+REDIS_SESSION_HOST=''
+REDIS_SESSION_PORT=''
+REDIS_DEFAULT_HOST=''
+REDIS_DEFAULT_PORT=''
+REDIS_FULLPAGE_HOST=''
+REDIS_FULLPAGE_PORT=''
 
 USE_SECURE=0
 
