@@ -618,7 +618,8 @@ function composerInstall()
     # If --force, wipe contents (not the directory itself)
     if [[ "$FORCE" -eq 1 ]]; then
         _arrow "Cleaning up the installation directory (FORCE=1)..."
-        find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+        # Use || true to handle unmovable mount points (e.g. Docker volumes)
+        find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
     fi
 
     # If still not empty, use a temp directory and then rsync into place
@@ -629,6 +630,10 @@ function composerInstall()
             magento/project-community-edition:"${M2_VERSION}" --no-dev --prefer-dist "$TMPDIR" \
             || _die "'composer create-project' failed."
 
+        # Ensure target subdirectories exist before rsync (e.g. Docker volume mount points)
+        (cd "$TMPDIR" && find . -mindepth 1 -type d) | while read -r _dir; do
+            mkdir -p "$INSTALL_DIR/$_dir"
+        done
         rsync -a "$TMPDIR"/ "$INSTALL_DIR"/ || _die "rsync into $INSTALL_DIR failed."
         rm -rf "$TMPDIR"
     else
