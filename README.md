@@ -40,10 +40,10 @@ m2-installer --help
 
 ---
 
-### Install Magento CE 2.4.8 (with sample data)
+### Install Magento CE 2.4.9 (with sample data)
 
 ```bash
-m2-installer --version=2.4.8 --base-url=magento248.test   --install-sample-data --db-user=root --db-pass=pass --db-name=magento248
+m2-installer --version=2.4.9 --base-url=magento249.test   --install-sample-data --db-user=root --db-pass=pass --db-name=magento249
 ```
 
 > `--install-sample-data` is required to include sample data.
@@ -51,7 +51,7 @@ m2-installer --version=2.4.8 --base-url=magento248.test   --install-sample-data 
 Install via Composer:
 
 ```bash
-m2-installer --source=composer --version=2.4.8 --base-url=magento248.test   --install-sample-data --db-user=root --db-pass=pass --db-name=magento248
+m2-installer --source=composer --version=2.4.9 --base-url=magento249.test   --install-sample-data --db-user=root --db-pass=pass --db-name=magento249
 ```
 
 *If `--source` is not passed, `tar` is used by default.*
@@ -93,7 +93,7 @@ m2-installer --version=2.4.7 --base-url=magento247.test   --db-user=root --db-pa
 ```
 
 ```bash
-m2-installer --version=2.4.8 --base-url=magento248.test   --db-user=root --db-pass=pass --db-name=magento248   --search-engine=opensearch --opensearch-host=127.0.0.1
+m2-installer --version=2.4.9 --base-url=magento249.test   --db-user=root --db-pass=pass --db-name=magento249   --search-engine=opensearch --opensearch-host=127.0.0.1
 ```
 
 ---
@@ -108,7 +108,7 @@ To use `redis` for sessions, frontend, and full-page cache:
 
 **Example:**
 ```bash
-m2-installer --version=2.4.8 --base-url=magento248.test   --db-user=root --db-pass=pass --db-name=magento248 --use-redis-cache
+m2-installer --version=2.4.9 --base-url=magento249.test   --db-user=root --db-pass=pass --db-name=magento249 --use-redis-cache
 ```
 
 ---
@@ -118,7 +118,7 @@ m2-installer --version=2.4.8 --base-url=magento248.test   --db-user=root --db-pa
 Skip confirmation prompts and clean the directory before installation:
 
 ```bash
-m2-installer --version=2.4.8 --base-url=magento248.test   --db-user=root --db-pass=pass --db-name=magento248 --force
+m2-installer --version=2.4.9 --base-url=magento249.test   --db-user=root --db-pass=pass --db-name=magento249 --force
 ```
 
 ---
@@ -140,7 +140,7 @@ Edit to set defaults like DB credentials, search engine, Redis, etc.
 
 Then run simply:
 ```bash
-m2-installer --version=2.4.8 --base-url=magento248.test --use-secure --force
+m2-installer --version=2.4.9 --base-url=magento249.test --use-secure --force
 ```
 
 ---
@@ -166,7 +166,13 @@ warden shell
 Inside the container:
 
 ```bash
-m2-installer --source=composer --version=2.4.8-p4 --install-sample-data --use-secure   --base-url=app.<project>.test --db-host=db   --db-user=magento --db-pass=magento --db-name=magento   --elasticsearch-host=opensearch --use-redis-cache   --redis-host=valkey --force
+m2-installer --source=composer --version=2.4.9 --install-sample-data --use-secure   --base-url=app.<project>.test --db-host=db   --db-user=magento --db-pass=magento --db-name=magento   --elasticsearch-host=opensearch --use-redis-cache   --redis-host=valkey --force
+```
+
+Or install **Mage-OS 3.0** inside Warden:
+
+```bash
+m2-installer --distribution=mage-os --version=3.0.0 --install-sample-data --use-secure   --base-url=app.<project>.test --db-host=db   --db-user=magento --db-pass=magento --db-name=magento   --opensearch-host=opensearch --use-redis-cache   --redis-host=valkey --force
 ```
 
 > Warden exposes services by their Docker Compose service names (`db`, `opensearch`, `valkey`) inside the shell — no need to use full container names.
@@ -176,7 +182,7 @@ m2-installer --source=composer --version=2.4.8-p4 --install-sample-data --use-se
 Use this free bash script: [nginx-virtual-host-bash-script](https://github.com/MagePsycho/nginx-virtual-host-bash-script)
 
 ```bash
-sudo vhost-nginx --domain=magento248.test --app=magento2
+sudo vhost-nginx --domain=magento249.test --app=magento2
 ```
 
 ---
