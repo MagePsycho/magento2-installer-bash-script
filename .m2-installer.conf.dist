@@ -2,6 +2,11 @@
 BIN_COMPOSER="composer"
 BIN_PHP="php"
 
+# Distribution Settings
+# magento|mage-os
+# mage-os installs from https://repo.mage-os.org (composer only, no Adobe auth keys)
+DISTRIBUTION='magento'
+
 # Web Settings
 #PROJECT_NAME=
 USE_SECURE=1

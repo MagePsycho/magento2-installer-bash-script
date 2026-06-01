@@ -56,6 +56,18 @@ m2-installer --source=composer --version=2.4.8 --base-url=magento248.test   --in
 
 *If `--source` is not passed, `tar` is used by default.*
 
+### Install Mage-OS
+
+[Mage-OS](https://mage-os.org) is a community-governed, drop-in fork of Magento Open Source. Use `--distribution=mage-os`:
+
+```bash
+m2-installer --distribution=mage-os --version=3.0.0 --base-url=mageos.test   --db-user=root --db-pass=pass --db-name=mageos --force
+```
+
+- Mage-OS is **composer-only** (it ships no tar archives), so `--source` is forced to `composer`.
+- It installs `mage-os/project-community-edition` from `https://repo.mage-os.org` and needs **no Adobe Marketplace auth keys**.
+- Pass the **Mage-OS** version to `--version` (e.g. `1.0.6`, `2.2.2`, `3.0.0`). The correct search engine is chosen automatically (Mage-OS 1.x → Elasticsearch, 2.x/3.x → OpenSearch).
+
 ---
 
 ## 🔍 Search Engine Configuration

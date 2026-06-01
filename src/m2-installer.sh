@@ -246,6 +246,8 @@ Version $VERSION
 
     Options:
         --source                    Installation source (Options: tar, composer, Default: tar)
+        --distribution              Distribution to install (Options: magento, mage-os; Default: magento)
+                                    mage-os installs from https://repo.mage-os.org (composer only, no auth keys)
         --edition                   Magento2 edition (Default: community)
         --version                   Magento2 version
                                     Refer - https://github.com/magento/magento2/releases
@@ -295,6 +297,7 @@ Version $VERSION
         $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=... --use-redis-cache --redis-host=...
         $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=... --elasticsearch-host=...
         $(basename "$0") [--source=...] --version=... --base-url=... --install-sample-data --db-user=... --db-pass=... --db-name=... --opensearch-host=...
+        $(basename "$0") --distribution=mage-os --version=3.0.0 --base-url=... --db-user=... --db-pass=... --db-name=...
 "
     _printPoweredBy
     exit 1
@@ -311,6 +314,9 @@ function processArgs()
             ;;
             --source-path=*)
                 SOURCE_PATH="${arg#*=}"
+            ;;
+            --distribution=*)
+                DISTRIBUTION="${arg#*=}"
             ;;
             --edition=*)
                 M2_EDITION="${arg#*=}"
@@ -452,6 +458,7 @@ function processArgs()
         esac
     done
 
+    applyDistributionDefaults
     validateArgs
     sanitizeArgs
     applyRedisDefaults
@@ -469,6 +476,11 @@ function validateArgs()
 
     if [[ "$INSTALL_SOURCE" != @(tar|composer) ]]; then
         _error "Install source must be one of tar|composer."
+    fi
+
+    if [[ "$DISTRIBUTION" != @(magento|mage-os) ]]; then
+        _error "Distribution must be one of magento|mage-os."
+        ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
 
     if [[ "$M2_VERSION" ]] && [[ "$INSTALL_SOURCE" == 'tar' ]]; then
@@ -558,12 +570,12 @@ function applyRedisDefaults()
 function applySearchEngineDefaults()
 {
     # For 2.4.8+: map elasticsearch args to opensearch if opensearch args were not explicitly set
-    if [[ "$(_semVerToInt "${M2_VERSION}")" -ge 248 ]]; then
+    if [[ "$(_semVerToInt "${M2_BASE_VERSION}")" -ge 248 ]]; then
         [[ "$OPENSEARCH_HOST" = "127.0.0.1" && "$ELASTICSEARCH_HOST" != "127.0.0.1" ]] && OPENSEARCH_HOST="$ELASTICSEARCH_HOST"
         [[ "$OPENSEARCH_PORT" = "9200" && "$ELASTICSEARCH_PORT" != "9200" ]] && OPENSEARCH_PORT="$ELASTICSEARCH_PORT"
         [[ "$OPENSEARCH_INDEX_PREFIX" = "magento2" && "$ELASTICSEARCH_INDEX_PREFIX" != "magento2" ]] && OPENSEARCH_INDEX_PREFIX="$ELASTICSEARCH_INDEX_PREFIX"
     # For <2.4.8: map opensearch args to elasticsearch if elasticsearch args were not explicitly set
-    elif [[ "$(_semVerToInt "${M2_VERSION}")" -ge 240 ]]; then
+    elif [[ "$(_semVerToInt "${M2_BASE_VERSION}")" -ge 240 ]]; then
         [[ "$ELASTICSEARCH_HOST" = "127.0.0.1" && "$OPENSEARCH_HOST" != "127.0.0.1" ]] && ELASTICSEARCH_HOST="$OPENSEARCH_HOST"
         [[ "$ELASTICSEARCH_PORT" = "9200" && "$OPENSEARCH_PORT" != "9200" ]] && ELASTICSEARCH_PORT="$OPENSEARCH_PORT"
         [[ "$ELASTICSEARCH_INDEX_PREFIX" = "magento2" && "$OPENSEARCH_INDEX_PREFIX" != "magento2" ]] && ELASTICSEARCH_INDEX_PREFIX="$OPENSEARCH_INDEX_PREFIX"
@@ -594,6 +606,51 @@ function prepareM2GitTarUrl()
     SOURCE_PATH="https://github.com/magento/magento2/archive/${M2_VERSION}.tar.gz"
 }
 
+function mageOsToMagentoVersion()
+{
+    # Mage-OS 1.x is built on Magento 2.4.7; 2.x/3.x (and newer) on 2.4.8+
+    local _major="${1%%.*}"
+    if [[ "$_major" -le 1 ]]; then
+        echo "2.4.7"
+    else
+        echo "2.4.8"
+    fi
+}
+
+function applyDistributionDefaults()
+{
+    # M2_BASE_VERSION drives all Magento-version-dependent (2.4.x threshold) logic.
+    # For Mage-OS, derive the equivalent Magento base version from the Mage-OS version.
+    if [[ "$DISTRIBUTION" = 'mage-os' ]]; then
+        # Mage-OS has no product tarball; it is composer-only.
+        if [[ "$INSTALL_SOURCE" = 'tar' ]]; then
+            _warning "Mage-OS does not publish tar archives; forcing --source=composer."
+        fi
+        INSTALL_SOURCE='composer'
+
+        # If version is still the Magento default, fall back to the latest Mage-OS version.
+        if [[ "$M2_VERSION" = '2.4.8-p4' ]]; then
+            M2_VERSION="$MAGEOS_DEFAULT_VERSION"
+        fi
+
+        M2_BASE_VERSION="$(mageOsToMagentoVersion "$M2_VERSION")"
+    else
+        M2_BASE_VERSION="$M2_VERSION"
+    fi
+}
+
+function prepareComposerSource()
+{
+    if [[ "$DISTRIBUTION" = 'mage-os' ]]; then
+        # Open repository - no Adobe Marketplace auth keys required
+        COMPOSER_REPO_URL="https://repo.mage-os.org/"
+        COMPOSER_PACKAGE="mage-os/project-community-edition"
+    else
+        COMPOSER_REPO_URL="https://repo.magento.com/"
+        COMPOSER_PACKAGE="magento/project-community-edition"
+    fi
+}
+
 function prepareInstallDir()
 {
     # INSTALL_DIR is overridden by CLI args
@@ -612,6 +669,8 @@ function genRandomPassword()
 
 function composerInstall()
 {
+    prepareComposerSource
+
     mkdir -p "$INSTALL_DIR"
     cd "$INSTALL_DIR" || _die "Couldn't change directory to : ${INSTALL_DIR}."
 
@@ -633,8 +692,8 @@ function composerInstall()
     if [ -n "$(ls -A "$INSTALL_DIR")" ]; then
         _warning "Target dir is not empty. Using temp dir for create-project..."
         TMPDIR=$(mktemp -d /tmp/m2create.XXXXXX) || _die "mktemp failed"
-        "$BIN_COMPOSER" create-project --repository=https://repo.magento.com/ \
-            magento/project-community-edition:"${M2_VERSION}" --no-dev --prefer-dist "$TMPDIR" \
+        "$BIN_COMPOSER" create-project --repository="${COMPOSER_REPO_URL}" \
+            "${COMPOSER_PACKAGE}:${M2_VERSION}" --no-dev --prefer-dist "$TMPDIR" \
             || _die "'composer create-project' failed."
 
         rsync -a "$TMPDIR"/ "$INSTALL_DIR"/
@@ -650,8 +709,8 @@ function composerInstall()
         fi
         rm -rf "$TMPDIR"
     else
-        "$BIN_COMPOSER" create-project --repository=https://repo.magento.com/ \
-            magento/project-community-edition:"${M2_VERSION}" --no-dev --prefer-dist . \
+        "$BIN_COMPOSER" create-project --repository="${COMPOSER_REPO_URL}" \
+            "${COMPOSER_PACKAGE}:${M2_VERSION}" --no-dev --prefer-dist . \
             || _die "'composer create-project' failed."
     fi
 
@@ -785,7 +844,7 @@ function initUserInputWizard()
     _seekValue "Enter DB Pass" "${DB_PASS}"
     DB_PASS=${READVALUE}
 
-    if [[ "$(_semVerToInt ${M2_VERSION})" -ge 248 ]]; then
+    if [[ "$(_semVerToInt ${M2_BASE_VERSION})" -ge 248 ]]; then
         _seekValue "Enter Search Engine" "${SEARCH_ENGINE}"
         SEARCH_ENGINE=${READVALUE}
 
@@ -797,7 +856,7 @@ function initUserInputWizard()
 
         _seekValue "Enter OpenSearch Index Prefix" "${OPENSEARCH_INDEX_PREFIX}"
         OPENSEARCH_INDEX_PREFIX=${READVALUE}
-    elif [[ "$(_semVerToInt ${M2_VERSION})" -ge 240 ]]; then
+    elif [[ "$(_semVerToInt ${M2_BASE_VERSION})" -ge 240 ]]; then
         _seekValue "Enter Search Engine" "${SEARCH_ENGINE}"
         SEARCH_ENGINE=${READVALUE}
 
@@ -849,8 +908,8 @@ function installMagento()
     )
 
     # Configure Elasticsearch
-    if [[ "$(_semVerToInt "${M2_VERSION}")" -ge 240 && "$(_semVerToInt "${M2_VERSION}")" -lt 248 ]]; then
-    ##if [[ "$(_semVerToInt ${M2_VERSION})" -ge 240 ]]; then
+    if [[ "$(_semVerToInt "${M2_BASE_VERSION}")" -ge 240 && "$(_semVerToInt "${M2_BASE_VERSION}")" -lt 248 ]]; then
+    ##if [[ "$(_semVerToInt ${M2_BASE_VERSION})" -ge 240 ]]; then
       _installOpts+=(
         "--search-engine=${SEARCH_ENGINE}"
         "--elasticsearch-host=${ELASTICSEARCH_HOST}"
@@ -861,7 +920,7 @@ function installMagento()
       )
     fi
 
-    if [[ "$(_semVerToInt ${M2_VERSION})" -ge 248 ]]; then
+    if [[ "$(_semVerToInt ${M2_BASE_VERSION})" -ge 248 ]]; then
         _installOpts+=(
           "--search-engine=${SEARCH_ENGINE}"
           "--opensearch-host=${OPENSEARCH_HOST}"
@@ -950,14 +1009,14 @@ function beforeInstall()
 function configureSearchEngine()
 {
     _arrow "Persisting search engine config in env.php..."
-    if [[ "$(_semVerToInt "${M2_VERSION}")" -ge 248 ]]; then
+    if [[ "$(_semVerToInt "${M2_BASE_VERSION}")" -ge 248 ]]; then
         "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/engine "${SEARCH_ENGINE}"
         "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/opensearch_server_hostname "${OPENSEARCH_HOST}"
         "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/opensearch_server_port "${OPENSEARCH_PORT}"
         "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/opensearch_index_prefix "${OPENSEARCH_INDEX_PREFIX}"
         "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/opensearch_enable_auth 0
         "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/opensearch_server_timeout 15
-    elif [[ "$(_semVerToInt "${M2_VERSION}")" -ge 240 ]]; then
+    elif [[ "$(_semVerToInt "${M2_BASE_VERSION}")" -ge 240 ]]; then
         "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/engine "${SEARCH_ENGINE}"
         "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/elasticsearch7_server_hostname "${ELASTICSEARCH_HOST}"
         "$BIN_PHP" ./bin/magento config:set --lock-env catalog/search/elasticsearch7_server_port "${ELASTICSEARCH_PORT}"
@@ -1102,6 +1161,8 @@ DOWNLOAD_DIR=/tmp
 CONFIG_FILE=".m2-installer.conf"
 INSTALL_SOURCE='tar'
 SOURCE_PATH=
+DISTRIBUTION='magento'
+MAGEOS_DEFAULT_VERSION='3.0.0'
 M2_EDITION='community'
 M2_VERSION=2.4.8-p4
 M2_SETUP_MODE=developer
